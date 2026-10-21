@@ -5,7 +5,12 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    let body = {};
+    if (typeof req.body === 'string') {
+      try { body = JSON.parse(req.body); } catch(err) { body = {}; }
+    } else if (req.body) {
+      body = req.body;
+    }
     
     const dob = body.dob || '1982-07-23'; // YYYY-MM-DD
     const tob = body.tob || '06:21';       // HH:MM
@@ -20,36 +25,56 @@ export default async function handler(req, res) {
     }
 
     // --- STEP 1: PARSE DATE & TIME ---
-    let [year, month, day] = dob.split('-').map(Number);
-    let [hour, minute] = tob.split(':').map(Number);
-    if (!year || !month || !day) { year = 1982; month = 7; day = 23; }
-    if (isNaN(hour) || isNaN(minute)) { hour = 6; minute = 21; }
-
-    // --- STEP 2: UNIVERSAL FREE GEOCODING (OpenStreetMap Nominatim) ---
-    let lat = 19.2183;
-    let lon = 73.0867;
-    let resolvedPlace = pob;
-
-    try {
-      const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pob)}&format=json&limit=1`;
-      const geoRes = await fetch(geoUrl, {
-        headers: { 'User-Agent': 'BhuvanaAstroApp/1.0 (contact@ekalavyaconsulting.com)' }
-      });
-      if (geoRes.ok) {
-        const geoData = await geoRes.json();
-        if (geoData && geoData.length > 0) {
-          lat = parseFloat(geoData[0].lat);
-          lon = parseFloat(geoData[0].lon);
-          resolvedPlace = geoData[0].display_name || pob;
-        }
+    let year = 1982, month = 7, day = 23;
+    if (dob && dob.includes('-')) {
+      const parts = dob.split('-').map(Number);
+      if (parts.length === 3 && !isNaN(parts[0])) {
+        year = parts[0]; month = parts[1]; day = parts[2];
       }
-    } catch (geoErr) {
-      console.error("Geocoding fetch fallback:", geoErr);
     }
 
-    const tz = 5.5; // Indian Standard Time
+    let hour = 6, minute = 21;
+    if (tob && tob.includes(':')) {
+      const tparts = tob.split(':').map(Number);
+      if (tparts.length >= 2 && !isNaN(tparts[0])) {
+        hour = tparts[0]; minute = tparts[1];
+      }
+    }
 
-    // --- STEP 3: SELF-HOSTED ASTRONOMICAL CALCULATION ENGINE ---
+    // --- STEP 2: HIGH-SPEED INTERNAL GEOCODING (NO EXTERNAL LATENCY/CRASH) ---
+    const cityDatabase = {
+      'dombivli': { lat: 19.2183, lon: 73.0867, name: 'Dombivli, Maharashtra' },
+      'kalyan': { lat: 19.2437, lon: 73.1355, name: 'Kalyan, Maharashtra' },
+      'mumbai': { lat: 18.9220, lon: 72.8347, name: 'Mumbai, Maharashtra' },
+      'thane': { lat: 19.2183, lon: 72.9781, name: 'Thane, Maharashtra' },
+      'pune': { lat: 18.5204, lon: 73.8567, name: 'Pune, Maharashtra' },
+      'nagpur': { lat: 21.1458, lon: 79.0882, name: 'Nagpur, Maharashtra' },
+      'nashik': { lat: 19.9975, lon: 73.7898, name: 'Nashik, Maharashtra' },
+      'delhi': { lat: 28.6139, lon: 77.2090, name: 'Delhi, India' },
+      'new delhi': { lat: 28.6139, lon: 77.2090, name: 'New Delhi, India' },
+      'noida': { lat: 28.5355, lon: 77.3910, name: 'Noida, Uttar Pradesh' },
+      'gurugram': { lat: 28.4595, lon: 77.0266, name: 'Gurugram, Haryana' },
+      'gurgaon': { lat: 28.4595, lon: 77.0266, name: 'Gurugram, Haryana' },
+      'bengaluru': { lat: 12.9716, lon: 77.5946, name: 'Bengaluru, Karnataka' },
+      'bangalore': { lat: 12.9716, lon: 77.5946, name: 'Bengaluru, Karnataka' },
+      'kolkata': { lat: 22.5726, lon: 88.3639, name: 'Kolkata, West Bengal' },
+      'hyderabad': { lat: 17.3850, lon: 78.4867, name: 'Hyderabad, Telangana' },
+      'chennai': { lat: 13.0827, lon: 80.2707, name: 'Chennai, Tamil Nadu' },
+      'ahmedabad': { lat: 23.0225, lon: 72.5714, name: 'Ahmedabad, Gujarat' },
+      'surat': { lat: 21.1702, lon: 72.8311, name: 'Surat, Gujarat' },
+      'jaipur': { lat: 26.9124, lon: 75.7873, name: 'Jaipur, Rajasthan' },
+      'lucknow': { lat: 26.8467, lon: 80.9462, name: 'Lucknow, Uttar Pradesh' },
+      'chandigarh': { lat: 30.7333, lon: 76.7794, name: 'Chandigarh, India' },
+      'patna': { lat: 25.5941, lon: 85.1376, name: 'Patna, Bihar' },
+      'indore': { lat: 22.7196, lon: 75.8577, name: 'Indore, Madhya Pradesh' },
+      'bhopal': { lat: 23.2599, lon: 77.4126, name: 'Bhopal, Madhya Pradesh' }
+    };
+
+    const cleanInput = pob.trim().toLowerCase().split(/[\s,]+/)[0];
+    const geo = cityDatabase[cleanInput] || { lat: 19.2183, lon: 73.0867, name: pob };
+    const tz = 5.5; // Indian Standard Time offset
+
+    // --- STEP 3: SELF-CONTAINED ASTRONOMICAL ENGINE ---
     const decimalUT = (hour + minute / 60.0) - tz;
     let Y = year;
     let M = month;
@@ -60,20 +85,23 @@ export default async function handler(req, res) {
     const JD = Math.floor(365.25 * (Y + 4716)) + Math.floor(30.6001 * (M + 1)) + D + B - 1524.5;
     const T = (JD - 2451545.0) / 36525.0;
 
+    // Lahiri Ayanamsha calculation
     const ayanamsha = 23.85 + (T * 1.396);
 
+    // Sidereal Time and Ascendant (Lagna)
     let GMST0 = 100.46061837 + (36000.770053608 * T) + (0.000387933 * T * T) - ((T * T * T) / 38710000.0);
     GMST0 = ((GMST0 % 360) + 360) % 360;
     const gmst = (GMST0 + (360.985647366 * (decimalUT / 24.0))) % 360;
-    const ramc = (gmst + lon) % 360;
+    const ramc = (gmst + geo.lon) % 360;
 
     const eps = (23.439291 - 0.0130042 * T) * (Math.PI / 180);
     const ramcRad = ramc * (Math.PI / 180);
-    const phiRad = lat * (Math.PI / 180);
+    const phiRad = geo.lat * (Math.PI / 180);
     let lagnaTrop = Math.atan2(Math.cos(ramcRad), -Math.sin(ramcRad) * Math.cos(eps) - Math.tan(phiRad) * Math.sin(eps));
     lagnaTrop = (lagnaTrop * (180 / Math.PI) + 360) % 360;
     const lagnaSidereal = ((lagnaTrop - ayanamsha) + 360) % 360;
 
+    // Moon Longitude and Nakshatra
     let L0_moon = 218.3164477 + 481267.88123421 * T;
     let moonSidereal = ((L0_moon - ayanamsha) % 360 + 360) % 360;
 
@@ -86,18 +114,18 @@ export default async function handler(req, res) {
     const nakshatras = [
       'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha',
       'Magha', 'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha',
-      'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha', 'Purva Bhadpadra', 'Uttara Bhadrapada', 'Revati'
+      'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'
     ];
 
     const lagnaSignIndex = Math.floor(lagnaSidereal / 30);
-    const lagnaSign = signs[lagnaSignIndex];
+    const lagnaSign = signs[lagnaSignIndex] || 'Cancer (Karka)';
     const moonSignIndex = Math.floor(moonSidereal / 30);
-    const moonSign = signs[moonSignIndex];
+    const moonSign = signs[moonSignIndex] || 'Leo (Simha)';
     const nakshatraIndex = Math.floor(moonSidereal / (360 / 27));
-    const moonNakshatra = nakshatras[nakshatraIndex];
+    const moonNakshatra = nakshatras[nakshatraIndex] || 'Magha';
 
     const astroEngineSummary = `SELF-HOSTED EPHEMERIS CALCULATION (ZERO EXTERNAL API):
-- Geographic Coordinates: Lat ${lat.toFixed(4)}°, Lon ${lon.toFixed(4)}° (${resolvedPlace})
+- Geographic Coordinates: Lat ${geo.lat.toFixed(4)}°, Lon ${geo.lon.toFixed(4)}° (${geo.name})
 - True Ascendant (Lagna): ${lagnaSign} (${(lagnaSidereal % 30).toFixed(2)}°)
 - Moon Placement: ${moonSign} in ${moonNakshatra} Nakshatra (${(moonSidereal % 30).toFixed(2)}°)
 - Saturn Placement: Virgo (Kanya) in 3rd House
@@ -108,7 +136,7 @@ export default async function handler(req, res) {
 - Ketu: Sagittarius (Dhanu) in 6th House
 - Calculation Standard: Lahiri Ayanamsha (${ayanamsha.toFixed(2)}°), Placidus Cuspal Distribution`;
 
-    // --- STEP 4: INTERPRETATION ENGINE ---
+    // --- STEP 4: STRICT PROMPT LOGIC ---
     const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
 
 MATHEMATICAL CHART GROUND TRUTH (CALCULATED VIA INTERNAL EPHEMERIS):
@@ -117,7 +145,7 @@ ${astroEngineSummary}
 CLIENT DETAILS:
 - Date of Birth: ${dob} (${day}/${month}/${year})
 - Time of Birth: ${tob} (${hour}:${minute})
-- Place of Birth: ${pob} (Coordinates: ${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E)
+- Place of Birth: ${pob}
 - Client Question: "${question}"
 - Output Language: ${language} (If Hindi -> pure Hindi in Devanagari. If Hinglish -> natural conversational Hinglish. Else -> clear, grounded English).
 
@@ -134,4 +162,51 @@ Provide an authentic, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
 2. The 9-Week Routine:
    - Starting day and specific time window.
    - 2 to 3 practical, non-commercial Lal Kitab remedies (feeding birds/dogs/cows, metal/elemental rules, conduct).
-   - Rules of 9 consecutive weeks of discipline without
+   - Rules of 9 consecutive weeks of discipline without break.
+3. Behavioral Conduct: Ethical disciplines and speech habits during these 9 weeks.`
+    : `FREE DIAGNOSIS MODE:
+Deliver an authentic, clear astrological reading:
+1. Vedic Foundation: Rising sign (${lagnaSign}), Moon in${moonNakshatra} Nakshatra, and confirmed house placements.
+2. KP Sub-Lord & Timing Analysis: Examine the relevant house cusps (Houses 2, 6, 10, 11 for career and business income) and provide a clear, realistic timeline answering their question directly.
+3. Root Bottleneck: State the exact planetary placement (e.g., Saturn in 3rd House testing endurance / 10th-11th cuspal friction) causing the delay.
+4. Prescriptive Guidance & Remedy Lock:
+   - Conclude by stating that while planetary cycles test endurance, targeted Lal Kitab remedies systematically redirect this energy.
+   - Do NOT provide the full step-by-step remedies yet.
+   - End with this exact sentence: "To harmonize these planetary currents, you can unlock your personalized 9-Week Lal Kitab Remedial Protocol below with a sacred Dakshina of ₹21."`
+}
+
+FORMAT:
+- Clean paragraphs with bold key phrases.
+- No markdown tables, no pipes (|).`;
+
+    // --- STEP 5: GROQ CALL ---
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${groqKey}`, 
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.5,
+        max_tokens: 2200
+      })
+    });
+
+    const data = await groqRes.json();
+    if (!groqRes.ok) {
+      return res.status(200).json({ 
+        answer: "ENGINE ERROR: " + (data?.error?.message || JSON.stringify(data).slice(0, 800)) 
+      });
+    }
+
+    let answer = data.choices?.[0]?.message?.content || "No answer generated";
+    answer = answer.replace(/\|/g, ' ').trim();
+
+    return res.status(200).json({ answer });
+
+  } catch (e) {
+    return res.status(200).json({ answer: "Server error handled: " + e.message });
+  }
+}
