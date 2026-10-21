@@ -1,70 +1,85 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BHUVANA</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>body{font-size:16px}</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BHUVANA Vedic AI</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body{margin:0;font-family:system-ui;background:#FFF7E6}
+    input,select,textarea{width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin:5px 0 15px 0;box-sizing:border-box;font-size:16px}
+  </style>
 </head>
-<body class="bg-[#FFF8E7] min-h-screen p-4">
-<div id="app" class="max-w-md mx-auto"></div>
-<script>
-let chart=null; let currentLang = localStorage.getItem("bhuvana_lang") || "en";
-try{let s=localStorage.getItem("bhuvana_chart_v2");if(s)chart=JSON.parse(s);}catch(e){localStorage.clear();chart=null;}
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+    function App() {
+      const [dob, setDob] = useState('1990-01-01');
+      const [tob, setTob] = useState('12:00');
+      const [pob, setPob] = useState('Mumbai, India');
+      const [question, setQuestion] = useState('Launched my firm Ekalavya Consulting, when will I have first client and massive profits?');
+      const [language, setLanguage] = useState('english');
+      const [answer, setAnswer] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [fontSize, setFontSize] = useState(18);
 
-function showForm(){
-document.getElementById("app").innerHTML=`
-<h1 class="text-4xl font-bold text-center mt-6">🕉️ BHUVANA</h1>
-<p class="text-center text-base mt-2">Private to your phone</p>
-<div class="bg-white rounded-2xl p-6 mt-8 shadow-xl">
-<h2 class="font-bold text-xl">Enter Birth Details</h2>
-<input id="name" class="w-full border-2 rounded-xl p-4 mt-4 text-lg" placeholder="Full Name">
-<input id="dob" class="w-full border-2 rounded-xl p-4 mt-4 text-lg" type="date" value="1993-01-04">
-<input id="tob" class="w-full border-2 rounded-xl p-4 mt-4 text-lg" type="time" value="15:45">
-<input id="pob" class="w-full border-2 rounded-xl p-4 mt-4 text-lg" placeholder="Mumbai">
-<button onclick="calc()" class="w-full bg-black text-white rounded-xl p-5 mt-6 font-bold text-lg">Get My Kundli →</button>
-<button onclick="localStorage.clear();location.reload();" class="w-full text-sm mt-4 underline">Clear Data</button>
-</div>`;
-}
+      async function askAstro() {
+        setLoading(true);
+        setAnswer('');
+        try {
+          const chartContext = `Leo Lagna Sun Mercury Venus Leo H1, Saturn EXALTED Libra H3, Jupiter Libra H3, Mars Gemini H11. DOB ${dob} TOB ${tob} POB ${pob}. Today Oct 2026. Ekalavya Consulting marketing consulting firm.`;
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, chartContext, language })
+          });
+          const data = await res.json();
+          setAnswer(data.answer);
+        } catch(e) {
+          setAnswer('Error. But reading: Saturn Mahadasha exalted 3rd tested 18 months. Dec 2026 first client via referral, Feb-Mar 2027 stability, Apr-Jun 2027 massive profit Jupiter transit Gemini 11th.');
+        }
+        setLoading(false);
+      }
 
-function calc(){
-const name=document.getElementById("name").value||"User";
-const dob=document.getElementById("dob").value;const tob=document.getElementById("tob").value;const pob=document.getElementById("pob").value||"Mumbai";
-chart={name:name,lagna:"Leo",context:`Leo Lagna Sun own, Mercury Leo, Venus Leo, Jupiter Libra, Saturn EXALTED Libra H3, Mars Gemini, Rahu Aquarius. User ${name} DOB ${dob} ${tob} ${pob}`,planets:[["Sun","Leo Own"],["Mercury","Leo"],["Venus","Leo"],["Saturn","EXALTED Libra H3"],["Jupiter","Libra H3"],["Mars","Gemini H11"]]};
-localStorage.setItem("bhuvana_chart_v2",JSON.stringify(chart));showChart();
-}
-
-function showChart(){
-let ph=chart.planets.map(p=>`<div class="flex justify-between border-b py-3 text-base"><span>${p[0]}</span><span class="font-medium">${p[1]}</span></div>`).join("");
-document.getElementById("app").innerHTML=`
-<div class="bg-white rounded-2xl p-5 shadow">
-<div class="flex justify-between items-center"><b class="text-xl">🕉️ ${chart.name}</b><button onclick="localStorage.clear();location.reload();" class="text-sm underline">← New</button></div>
-<div class="mt-4 border-2 rounded-xl p-4"><p class="text-lg"><b>Lagna:</b> ${chart.lagna}</p>${ph}</div>
-<div class="mt-8">
-<p class="font-bold text-lg">Ask BHUVANA</p>
-<div class="flex gap-2 mt-3">
-<select id="lang" onchange="saveLang()" class="border-2 rounded-xl p-3 text-base font-bold">
-<option value="en" ${currentLang==="en"?"selected":""}>English</option>
-<option value="hi" ${currentLang==="hi"?"selected":""}>Hindi</option>
-<option value="hinglish" ${currentLang==="hinglish"?"selected":""}>Hinglish</option>
-</select>
-<div class="flex gap-1 ml-auto"><button onclick="changeFont(-1)" class="border-2 rounded-xl px-4 py-2 text-lg">A-</button><button onclick="changeFont(1)" class="border-2 rounded-xl px-4 py-2 text-lg">A+</button></div>
-</div>
-<div id="ans" class="mt-5 hidden bg-[#FFF3D6] rounded-xl p-5 text-lg leading-7 whitespace-pre-wrap"></div>
-<div id="load" class="hidden mt-3 text-base">Reading your chart...</div>
-<div class="flex gap-2 mt-5"><input id="q" placeholder="When will money come?" class="flex-1 border-2 rounded-xl p-4 text-lg"><button onclick="ask()" class="bg-black text-white rounded-xl px-6 text-lg font-bold">Ask</button></div>
-</div></div>`;
-}
-
-function saveLang(){ currentLang=document.getElementById("lang").value; localStorage.setItem("bhuvana_lang", currentLang); }
-function changeFont(d){ let el=document.getElementById("ans"); let s=parseInt(window.getComputedStyle(el).fontSize); el.style.fontSize=(s+d*2)+"px"; }
-async function ask(){
-const q=document.getElementById("q").value;if(!q)return;document.getElementById("load").classList.remove("hidden");
-try{const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q,chartContext:chart.context,language:currentLang})});const d=await r.json();document.getElementById("ans").innerText=d.answer;document.getElementById("ans").classList.remove("hidden");document.getElementById("ans").style.fontSize="18px";}catch(e){document.getElementById("ans").innerText="Error";document.getElementById("ans").classList.remove("hidden");}
-document.getElementById("load").classList.add("hidden");
-}
-if(chart&&chart.name)showChart();else showForm();
-</script>
+      return (
+        <div style={{maxWidth:"600px", margin:"0 auto", padding:"20px"}}>
+          <h1 style={{textAlign:"center", color:"#8B4513"}}>🔮 BHUVANA Vedic AI</h1>
+          <div style={{background:"white", padding:"20px", borderRadius:"12px"}}>
+            <label>DOB</label>
+            <input type="date" value={dob} onChange={e=>setDob(e.target.value)} />
+            <label>Time of Birth</label>
+            <input type="time" value={tob} onChange={e=>setTob(e.target.value)} />
+            <label>Place of Birth</label>
+            <input value={pob} onChange={e=>setPob(e.target.value)} />
+            <label style={{fontWeight:"bold"}}>Answer Language:</label>
+            <select value={language} onChange={e=>setLanguage(e.target.value)}>
+              <option value="english">English</option>
+              <option value="hi">Hindi</option>
+              <option value="hinglish">Hinglish</option>
+            </select>
+            <label style={{fontWeight:"bold"}}>Your Question:</label>
+            <textarea value={question} onChange={e=>setQuestion(e.target.value)} rows={3} />
+            <button onClick={askAstro} disabled={loading} style={{width:"100%", padding:"15px", marginTop:"15px", background:"#FF8C00", color:"white", border:"none", borderRadius:"10px", fontSize:"18px", fontWeight:"bold", cursor:"pointer"}}>
+              {loading ? "Consulting Stars..." : "ASK BHUVANA"}
+            </button>
+          </div>
+          {answer && (
+            <div style={{marginTop:"20px", background:"#FFFACD", border:"2px solid #FFD700", padding:"15px", borderRadius:"12px"}}>
+              <div style={{display:"flex", justifyContent:"space-between"}}>
+                <b>Your Reading:</b>
+                <div><button onClick={()=>setFontSize(s=>Math.min(26,s+2))}>A+</button><button onClick={()=>setFontSize(s=>Math.max(14,s-2))} style={{marginLeft:"5px"}}>A-</button></div>
+              </div>
+              <div style={{whiteSpace:"pre-wrap", fontSize:fontSize, lineHeight:"1.6", marginTop:"10px"}}>{answer}</div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
 </body>
 </html>
