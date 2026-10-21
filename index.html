@@ -22,28 +22,20 @@ input:focus{border-color:#D2691E}
 .btn{width:100%;padding:16px;background:linear-gradient(135deg,#E86A2C,#D35400);color:white;border:none;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;margin-top:10px;box-shadow:0 4px 15px rgba(232,106,44,0.3)}
 .btn-green{background:linear-gradient(135deg,#22C55E,#16A34A);box-shadow:0 4px 15px rgba(34,197,94,0.3);margin-top:16px}
 .btn:active{transform:scale(0.98)}
-.divider{height:1px;background:#F5E6D3;margin:20px 0}
-
-/* NORTH INDIAN DIAMOND CHART */
 .chart-container{background:#FFFBF5;border:2px solid #8B4513;border-radius:16px;padding:10px;margin:12px 0;position:relative}
-.chart-title{font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.diamond{width:100%;aspect-ratio:1;position:relative;border:2px solid #8B4513;background:white}
+.chart-title{font-weight:700;font-size:15px;margin-bottom:10px}
+.diamond{width:100%;aspect-ratio:1;position:relative;border:2px solid #8B4513;background:white;overflow:hidden}
 .diamond-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr 1fr;width:100%;height:100%;position:relative}
-.diamond-grid::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;border:1px solid #8B4513;pointer-events:none;background: linear-gradient(to bottom right, transparent 49.5%, #8B4513 49.5%, #8B4513 50.5%, transparent 50.5%), linear-gradient(to bottom left, transparent 49.5%, #8B4513 49.5%, #8B4513 50.5%, transparent 50.5%)}
 .house{border:0.5px solid #E8D5B7;padding:4px;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.2;z-index:1}
 .house b{font-size:10px;color:#D2691E}
 .house.active{background:#FFF3E0}
-.center-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#FFF8F0;border:1.5px solid #8B4513;padding:6px 14px;font-weight:800;font-size:13px;letter-spacing:1px;z-index:2;border-radius:4px}
-
 .kp-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
 .kp-table th{text-align:left;color:#8B7355;font-size:11px;padding:8px 4px;border-bottom:1px solid #F0DCC0}
 .kp-table td{padding:10px 4px;border-bottom:1px solid #FFF0D9}
 .asc-info{font-size:12px;background:#FFF3E0;padding:8px 12px;border-radius:8px;margin:8px 0;color:#6B5434}
-
-/* CHAT UI */
 .chat-wrap{margin-top:24px;border-top:2px solid #F5E6D3;padding-top:18px}
 .chat-header{font-weight:700;font-size:14px;margin-bottom:12px}
-.chat-box{height:280px;overflow-y:auto;background:#FFFBF5;border:1.5px solid #F0DCC0;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.chat-box{height:320px;overflow-y:auto;background:#FFFBF5;border:1.5px solid #F0DCC0;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px}
 .msg{max-width:85%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.4}
 .msg.bot{background:white;border:1px solid #F0DCC0;align-self:flex-start;border-bottom-left-radius:4px}
 .msg.user{background:#4A2511;color:white;align-self:flex-end;border-bottom-right-radius:4px}
@@ -55,23 +47,15 @@ input:focus{border-color:#D2691E}
 </style>
 </head>
 <body>
-
-<!-- SCREEN 1: LOGIN -->
 <div id="s1" class="screen active">
   <div class="card">
-    <div class="logo-wrap">
-      <div class="logo-circle">भु</div>
-      <h1>BHUVANA</h1>
-      <div class="sub">AI Vedic Astrologer • KP • Lal Kitab</div>
-    </div>
+    <div class="logo-wrap"><div class="logo-circle">भु</div><h1>BHUVANA</h1><div class="sub">AI Vedic Astrologer • KP • Lal Kitab</div></div>
     <div class="input-group"><label>Email</label><input id="email" placeholder="you@email.com"></div>
     <div class="input-group"><label>Password</label><input type="password" placeholder="••••••••"></div>
     <button class="btn" onclick="show('s2')">LOGIN → ENTER BIRTH DETAILS</button>
     <div style="text-align:center;font-size:12px;margin-top:12px;color:#8B7355">Demo: No password needed. Click login.</div>
   </div>
 </div>
-
-<!-- SCREEN 2: BIRTH DETAILS -->
 <div id="s2" class="screen">
   <div class="card">
     <div class="logo-wrap"><h1>Enter Birth Details</h1><div class="sub">For accurate Vedic chart</div></div>
@@ -83,18 +67,14 @@ input:focus{border-color:#D2691E}
     <button style="background:none;border:none;width:100%;margin-top:10px;color:#8B7355;font-size:13px;cursor:pointer" onclick="show('s1')">← Back</button>
   </div>
 </div>
-
-<!-- SCREEN 3: CHART + CHAT -->
 <div id="s3" class="screen" style="justify-content:flex-start;padding-top:10px">
   <div class="card" style="max-width:460px">
     <div style="text-align:center;font-family:'Lora';font-weight:700;font-size:18px;margin-bottom:10px">BHUVANA - Chart Result</div>
-    
     <div class="chart-container">
       <div class="chart-title">☆ NORTH INDIAN VEDIC CHART</div>
       <div class="diamond" id="chartDiamond"></div>
       <div class="asc-info" id="ascInfo">Ascendant: Leo • 1982-07-23 06:21 Dombivli</div>
     </div>
-
     <div style="font-weight:700;margin-top:4px">KP - SUB-LORD TABLE</div>
     <table class="kp-table">
       <tr><th>PLANET</th><th>SIGN/STAR</th><th>SUB</th></tr>
@@ -105,8 +85,6 @@ input:focus{border-color:#D2691E}
       <tr><td>Jupiter</td><td>Libra Vishakha</td><td>Jupiter</td></tr>
       <tr><td>Saturn</td><td>Libra Vishakha</td><td>Moon</td></tr>
     </table>
-
-    <!-- AI CHAT SECTION - NEW IN V2 -->
     <div class="chat-wrap">
       <div class="chat-header">💬 Ask BHUVANA - Your Chart Knows You</div>
       <div class="chip-wrap">
@@ -115,64 +93,42 @@ input:focus{border-color:#D2691E}
         <div class="chip" onclick="askChip(this)">Why Saturn delay?</div>
         <div class="chip" onclick="askChip(this)">Lal Kitab remedy?</div>
       </div>
-      <div class="chat-box" id="chatBox">
-        <div class="msg bot">Namaste Abhishek! I am BHUVANA. I have your chart: Leo Lagna, Saturn in 3rd delaying efforts but giving long-term fame. Ask me anything about career, marriage, health - I will answer from your real chart, not generic. 🙏</div>
-      </div>
+      <div class="chat-box" id="chatBox"></div>
       <div class="chat-input">
-        <input id="q" placeholder="Ask: Career, marriage, money...">
+        <input id="q" placeholder="Ask: Career, marriage, money..." onkeypress="if(event.key==='Enter')sendQ()">
         <button onclick="sendQ()">Ask</button>
       </div>
     </div>
-
     <button class="btn btn-green" onclick="shareWA()">Share on WhatsApp</button>
     <button style="background:none;border:none;width:100%;margin-top:10px;color:#8B7355;font-size:13px;cursor:pointer" onclick="show('s2')">← Recalculate</button>
   </div>
 </div>
-
 <script>
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0)}
-
 function generate(){
   const name=document.getElementById('bname').value||'User';
   const dob=document.getElementById('dob').value;
   const tob=document.getElementById('tob').value;
   const pob=document.getElementById('pob').value;
   document.getElementById('ascInfo').innerText=`Ascendant: Leo • ${dob} ${tob} ${pob}`;
-  // Draw Diamond Chart - North Indian Style Houses 1-12
-  const houses = [
-    {h:1, p:'Ma Mo', pos:'top-left'},
-    {h:2, p:'Ju', pos:'top'},
-    {h:3, p:'Su Lagna', pos:'top-right'},
-    {h:4, p:'Me', pos:'right-top'},
-    {h:5, p:'Ve', pos:'right'},
-    {h:6, p:'', pos:'right-bottom'},
-    {h:7, p:'', pos:'bottom-right'},
-    {h:8, p:'Ra', pos:'bottom'},
-    {h:9, p:'Sa', pos:'bottom-left'},
-    {h:10, p:'Ke', pos:'left-bottom'},
-    {h:11, p:'', pos:'left'},
-    {h:12, p:'', pos:'left-top'}
-  ];
-  // Simple box layout for now but styled as diamond via CSS
   let html = `<div class="diamond-grid">`;
-  // Row 1
   html+=`<div class="house">Ma Mo<br><b>12</b></div><div class="house active">Ju<br><b>1 Lagna</b></div><div class="house">Su<br><b>2</b></div><div class="house">Me<br><b>3</b></div>`;
-  // Row 2
-  html+=`<div class="house">Ke<br><b>11</b></div><div class="house" style="grid-column:2 / span 2;grid-row:2 / span 2;justify-content:center;background:#FFF8F0"><span class="center-text" style="position:relative;transform:none;top:0;left:0;border:none;background:transparent">BHUVANA<br><small style="font-weight:400;font-size:10px">Leo 06:21</small></span></div><div class="house">Ve<br><b>4</b></div>`;
-  // Row 3
+  html+=`<div class="house">Ke<br><b>11</b></div><div class="house" style="grid-column:2 / span 2;grid-row:2 / span 2;justify-content:center;background:#FFF8F0;border:1.5px solid #8B4513"><div style="text-align:center;font-weight:800">BHUVANA<br><small style="font-weight:400;font-size:10px">Leo ${tob}</small></div></div><div class="house">Ve<br><b>4</b></div>`;
   html+=`<div class="house">Sa<br><b>10</b></div><div class="house">Ra<br><b>5</b></div>`;
-  // Row 4
-  html+=`<div class="house"><b>9</b></div><div class="house"><b>8</b></div><div class="house"><b>7</b></div><div class="house"><b>6</b></div>`;
+  html+=`<div class="house">Sa+Me<br><b>9</b></div><div class="house">Ju+Ra<br><b>8</b></div><div class="house">Mo<br><b>7</b></div><div class="house">Ma<br><b>6</b></div>`;
+  html+=`</div>`;
+  html+=`<div style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none">`;
+  html+=`<div style="position:absolute;top:0;left:0;width:70.7%;height:3px;background:#8B4513;transform:rotate(45deg);transform-origin:0 0"></div>`;
+  html+=`<div style="position:absolute;top:0;right:0;width:70.7%;height:3px;background:#8B4513;transform:rotate(-45deg);transform-origin:100% 0"></div>`;
+  html+=`<div style="position:absolute;bottom:0;left:0;width:70.7%;height:3px;background:#8B4513;transform:rotate(-45deg);transform-origin:0 100%"></div>`;
+  html+=`<div style="position:absolute;bottom:0;right:0;width:70.7%;height:3px;background:#8B4513;transform:rotate(45deg);transform-origin:100% 100%"></div>`;
   html+=`</div>`;
   document.getElementById('chartDiamond').innerHTML=html;
-  
   document.getElementById('chatBox').innerHTML=`<div class="msg bot">Namaste ${name}! I am BHUVANA. Chart calculated: Leo Ascendant, Sun in 1st with Lagna - strong leadership. Saturn in 3rd (Libra) is exalted - delays but gives mastery. Ask me anything - I am reading your chart live. 🙏</div>`;
   show('s3');
 }
-
 function askChip(el){document.getElementById('q').value=el.innerText;sendQ()}
-
-function sendQ(){
+async function sendQ(){
   const qEl=document.getElementById('q');
   const q=qEl.value.trim();
   if(!q) return;
@@ -180,27 +136,34 @@ function sendQ(){
   box.innerHTML+=`<div class="msg user">${q}</div>`;
   qEl.value='';
   box.scrollTop=box.scrollHeight;
-  
-  // Mock AI Brain - Replace later with real API call to /api/chat
-  setTimeout(()=>{
+  box.innerHTML+=`<div class="msg bot" id="thinking">BHUVANA is reading your chart... 🔮</div>`;
+  box.scrollTop=box.scrollHeight;
+  try{
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ question: q, chart: document.getElementById('ascInfo').innerText })
+    });
+    const data = await res.json();
+    const t=document.getElementById('thinking'); if(t) t.remove();
+    box.innerHTML+=`<div class="msg bot">${data.answer}</div>`;
+  }catch(e){
+    const t=document.getElementById('thinking'); if(t) t.remove();
     let ans="";
     const low=q.toLowerCase();
-    if(low.includes('career')) ans="From your chart: 10th lord Venus in 4th - career connected to home/land/consulting. Saturn exalted in 3rd aspects 10th - after July 2026, Saturn transit will lift your 10th. Next 6 months: Focus on teaching/consulting (Jupiter in Libra 3rd). Avoid job change till Nov. Remedy: Feed crows on Saturday.";
-    else if(low.includes('marriage')) ans="7th house empty but 7th lord Saturn exalted in 3rd - spouse will be hardworking, mature. Jupiter aspects 7th - marriage after Saturn maturity (post 2026). KP: 7th sub-lord is Moon in Ashlesha - emotional bonding matters more than timing.";
-    else if(low.includes('saturn')||low.includes('delay')) ans="Saturn in your chart is NOT bad - it's exalted in Libra 3rd house! 3rd is efforts. Saturn delays to make you perfect. Current Mahadasha? If Saturn MD - its aspect on Lagna gives discipline. Lal Kitab remedy: Keep iron piece with you, don't drink alcohol, respect elder brother.";
-    else if(low.includes('remedy')||low.includes('lal kitab')) ans="Lal Kitab for your Leo Lagna: 1) Keep copper coin in pocket, 2) Surya to father - offer water to Sun daily 6am, 3) For Saturn exalted: Don't buy iron on Saturday. Your chart needs Sun strengthening - will boost confidence + career.";
-    else ans="Good question! Based on your Leo Lagna: Sun in own house gives leadership, Moon in Cancer Ashlesha gives intuitive mind but anxiety. For '"+q+"' - I need to check your Dasha. Currently Jupiter transit over 7th - good for partnerships. Ask specific: career, marriage, money, health?";
+    if(low.includes('career')) ans="From your chart: 10th lord Venus in 4th - career connected to home/land/consulting. Saturn exalted in 3rd aspects 10th - after July 2026, Saturn transit will lift your 10th. Next 6 months: Focus on teaching/consulting. Avoid job change till Nov. Remedy: Feed crows on Saturday.";
+    else if(low.includes('marriage')) ans="7th lord Saturn exalted in 3rd - spouse hardworking, mature. Jupiter aspects 7th - marriage after Saturn maturity. KP: 7th sub-lord Moon Ashlesha - emotional bonding matters.";
+    else if(low.includes('saturn')||low.includes('delay')) ans="Saturn is exalted in Libra 3rd house! Not bad - delays to make you perfect. Lal Kitab: Keep iron piece, respect elder brother.";
+    else if(low.includes('remedy')||low.includes('lal kitab')) ans="Lal Kitab for Leo Lagna: 1) Copper coin in pocket, 2) Offer water to Sun daily 6am, 3) Don't buy iron on Saturday. Sun strengthening needed.";
+    else ans="Leo Lagna: Sun own house gives leadership, Moon Ashlesha intuitive mind. For '"+q+"' - check Dasha. Jupiter transit 7th - good for partnerships.";
     box.innerHTML+=`<div class="msg bot">${ans}</div>`;
-    box.scrollTop=box.scrollHeight;
-  },800);
+  }
+  box.scrollTop=box.scrollHeight;
 }
-
 function shareWA(){
   const text=encodeURIComponent(`My BHUVANA Vedic Chart - Leo Ascendant\n\nAsk BHUVANA AI: bhuvana-app.vercel.app\n\nJai Shri Ram 🙏`);
   window.open(`https://wa.me/?text=${text}`,'_blank');
 }
-
-// Init chart on load
 generate();
 </script>
 </body>
