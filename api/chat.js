@@ -1,3 +1,8 @@
+// Allow Vercel function to run up to 30 seconds if supported on plan
+export const config = {
+  maxDuration: 30,
+};
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -24,14 +29,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ answer: "SETUP ERROR: GROQ_API_KEY is missing in Vercel Environment Variables." });
     }
 
-    // --- STEP 1: PARSE INPUT ---
-    let [year, month, day] = dob.split('-').map(Number);
-    let [hour, minute] = tob.split(':').map(Number);
-    if (!year || !month || !day) { year = 1982; month = 7; day = 23; }
-    if (isNaN(hour) || isNaN(minute)) { hour = 6; minute = 21; }
-
-    // --- STEP 2: CHART GROUND TRUTH ---
-    // Grounded planetary matrix: Cancer Lagna, Moon in Magha Nakshatra, Saturn & Mars in 3rd House
+    // Chart Ground Truth
     const astroEngineSummary = `MATHEMATICAL EPHEMERIS GROUND TRUTH:
 - Ascendant (Lagna): Cancer (Karka)
 - Moon Placement: Leo (Simha) in Magha Nakshatra
@@ -44,22 +42,21 @@ export default async function handler(req, res) {
 - Ketu: Sagittarius (Dhanu) in the 6th House
 - System: KP System / Placidus House Cusps, Lahiri Ayanamsha`;
 
-    // --- STEP 3: CONSTRUCT SYSTEM PROMPT ---
     const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
 
 VERIFIED ASTRONOMICAL GROUND TRUTH (DO NOT DEVIATE):
 ${astroEngineSummary}
 
 CLIENT DETAILS:
-- Date of Birth: ${dob} (${day}/${month}/${year})
-- Time of Birth: ${tob} (${hour}:${minute})
+- Date of Birth: ${dob}
+- Time of Birth: ${tob}
 - Place of Birth: ${pob}
 - Client Question: "${question}"
 - Output Language: ${language} (If Hindi -> pure Hindi in Devanagari. If Hinglish -> natural conversational Hinglish. Else -> clear, grounded English).
 
 CRITICAL CONSTRAINTS:
 1. Base your reading strictly on the verified positions above: Cancer Lagna, Moon in Magha Nakshatra, Saturn in 3rd House in Virgo. Do not invent alternative placements.
-2. Maintain calm authority, empathy, and technical clarity.
+2. Maintain calm authority, empathy, and technical clarity. Keep each section concise and punchy.
 3. NEVER quote any fee like ₹2,100, and never suggest private consultations or phone calls.
 
 ${
@@ -69,7 +66,7 @@ Provide an authentic, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
 1. Planetary Root Friction: Detail which verified planetary placement requires channelization.
 2. The 9-Week Routine:
    - Starting day and specific time window.
-   - 2 to 3 practical, non-commercial Lal Kitab remedies (feeding birds/dogs/cows, metal/elemental rules, conduct).
+   - 2 to 3 practical, non-commercial Lal Kitab remedies.
    - Rules of 9 consecutive weeks of discipline without break.
 3. Behavioral Conduct: Ethical disciplines and speech habits during these 9 weeks.`
     : `FREE DIAGNOSIS MODE:
@@ -85,4 +82,41 @@ Deliver an authentic, clear astrological reading:
 
 FORMAT:
 - Clean paragraphs with bold key phrases.
-- No markdown tables, no pipes (|).
+- No markdown tables, no pipes (|).`;
+
+    // Fast-executing call to Groq
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${groqKey}`, 
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.5,
+        max_tokens: 950
+      })
+    });
+
+    const text = await groqRes.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      return res.status(200).json({ answer: "Upstream AI Service raw response: " + text.slice(0, 500) });
+    }
+
+    if (!groqRes.ok) {
+      return res.status(200).json({ 
+        answer: "ENGINE ERROR: " + (data?.error?.message || JSON.stringify(data)) 
+      });
+    }
+
+    const answer = data.choices?.[0]?.message?.content?.replace(/\|/g, ' ').trim() || "No reading generated.";
+    return res.status(200).json({ answer });
+
+  } catch (e) {
+    return res.status(200).json({ answer: "Server error handled: " + e.message });
+  }
+}
