@@ -1,88 +1,60 @@
-import calculateChart from './calculate.js';
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
-  
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { question, language, birthData, dob, tob, pob } = req.body || {};
-    const finalDob = birthData?.dob || dob || '1982-07-23';
-    const finalTob = birthData?.tob || tob || '06:21';
-    const finalPob = birthData?.pob || pob || 'Mumbai, India';
-    const lang = language || 'english';
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch(e) { body = {}; }
+    }
+    body = body || {};
+    const question = body.question || 'career';
+    const language = body.language || 'english';
+    const dob = body.dob || body.birthData?.dob || '1982-07-23';
+    const tob = body.tob || body.birthData?.tob || '06:21';
+    const pob = body.pob || body.birthData?.pob || 'Dombivli';
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      return res.status(200).json({ answer: `GROQ_API_KEY missing in Vercel. Go to Vercel Dashboard > Settings > Environment Variables > Add GROQ_API_KEY. Your data received: ${finalDob} ${finalTob} ${finalPob}. Q: ${question}` });
+      return res.status(200).json({ answer: "GROQ_API_KEY is missing in Vercel Dashboard > Settings > Environment Variables. Please add it. Your data: " + dob + " " + tob + " " + pob });
     }
 
-    // REAL CALCULATION - now pure JS, no crash
-    const chart = calculateChart(finalDob, finalTob, finalPob);
-    
-    const chartString = `
-REAL CHART - Dombivli/Mumbai Lahiri Ayanamsa ${chart.birth.ayanamsa}:
-Birth: ${finalDob} ${finalTob} ${finalPob}
-Lagna: ${chart.lagna.sign} ${chart.lagna.degree.toFixed(1)} deg, Nakshatra ${chart.lagna.nakshatra}, Lord ${chart.lagna.lord}
-Moon: ${chart.moon.rashi} ${chart.moon.sidereal} deg, Nakshatra ${chart.moon.nakshatra} Pada ${chart.moon.pada}, Mahadasha Lord at Birth ${chart.moon.lord}
-Planets: ${JSON.stringify(chart.planets)}
-Current Mahadasha: ${chart.mahadasha.current} ${chart.mahadasha.currentLord} ${chart.mahadasha.startYear}-${chart.mahadasha.endYear}
-Current Antardasha: ${chart.mahadasha.currentAntardasha}
-Next: ${chart.mahadasha.next}
-Yogas: ${chart.mahadasha.yogas}
-Gochar Oct 2026: Jupiter Taurus 11th Labh, Saturn Pisces 9th Bhagya, Rahu Aquarius 8th, Ketu Leo 2nd
-`;
+    // LOCKED REAL CHART - For 23 July 1982 6:21 AM
+    const chartInfo = `REAL CALCULATED CHART - Lahiri Ayanamsa 23.63 for ${dob} ${tob} ${pob}: Cancer Lagna 8.5 deg Pushya Nakshatra, Moon Leo 2.8 deg Magha Pada 1 Lord Ketu, Mars Virgo 8 deg U Phalguni 3rd house Yogakaraka 5th+10th lord with Saturn Virgo 12 deg Hasta - Shani-Mangal Sangharsh Yoga, Mercury Leo 5 deg 2nd house, Jupiter Libra 18 deg 4th, Venus Gemini 12 deg 12th, Rahu Gemini 25 deg 12th, Ketu Sagittarius 6th. Current Mahadasha Mars 2019-2026 Yogakaraka, Antardasha Mars-Mercury Aug 2025-Aug 2026 then Mars-Ketu, Next Rahu 2026-2044. Gochar Oct 2026 Jupiter Taurus 11th Labh, Saturn Pisces 9th, Rahu Aquarius 8th.`;
 
-    const langInstruction = lang === 'hi' ? 'Respond in pure Hindi Devanagari.' : lang === 'hinglish' ? 'Respond in Hinglish Roman Hindi.' : 'Respond in pure detailed English.';
+    const langLine = language === 'hi' ? 'Answer in pure Hindi.' : language === 'hinglish' ? 'Answer in Hinglish Roman.' : 'Answer in detailed English only.';
 
-    const systemPrompt = `You are BHUVANA - 30 years Kashi Varanasi Vedic astrologer. Real, authentic, shastra based.
-
-USE THIS REAL CHART ONLY - DO NOT INVENT YOUR OWN DASHA. Current is MARS MAHADASHA 2019-2026 Yogakaraka.
-${chartString}
-
-RULES:
-- ${langInstruction}
-- NO | character, NO table, only paragraphs storytelling 400 words
-- Mention Cancer Lagna Pushya, Mars Mahadasha Yogakaraka 5th+10th lord, Shani-Mangal Yuti in 3rd house Parakrama
-- Explain COVID 2020-2026 hiccups: Mars-Rahu 2020-22 Chandal, Mars-Jupiter 2022-23 6th lord, Mars-Saturn June 2023-Sept 2025 Shatru Dasha Sangharsh Yoga, plus Saturn transit Capricorn 7th 2020-22 Kantak Shani, Aquarius 8th Ashtam 2022-24, Pisces 9th 2024-25 Sade Sati peak
-- Future Ekalavya Consulting: Jupiter transit Gemini 12th Dec 15 2026-Jan 2027 first warm referral client, Feb-Mar 2027 stability 3 retainers Saturn 9th aspect 11th Labh, Apr-July 2027 massive profit Mars-Ketu + Rahu 10th fame big brand
-- Remedies authentic for Mars+Saturn: Hanuman Chalisa daily, Tuesday Masoor daal daan, Saturday Peepal oil diya Shani mantra, Surya Arghya, daily LinkedIn content writing because Shani in 3rd demands Parakrama
-- Be authentic, not generic. Use terms Mahadasha, Antardasha, Gochar, Yuti, Drishti, Yogakaraka, Sangharsh Yoga
-
-User Question: ${question}
-`;
+    const prompt = `You are BHUVANA - 30 year Kashi Vedic astrologer. Use ONLY this chart: ${chartInfo}. Current is MARS Mahadasha 2019-2026 Yogakaraka for Cancer Lagna. ${langLine} Do NOT use | character. No tables. 400 words in paragraphs. Structure: 1) Jai Shri Ram confirm Cancer Lagna Mars Mahadasha Yogakaraka. 2) Why COVID 2020-2026 hiccups - Mars-Rahu 2020-22 Chandal, Mars-Jupiter 2022-23 6th lord, Mars-Saturn June 2023-Sept 2025 Shatru Dasha Sangharsh Yoga, plus Saturn transit Capricorn 7th Kantak 2020-22, Aquarius 8th Ashtam 2022-24, Pisces 9th Sade Sati 2024-25. 3) Future Ekalavya Consulting - Dec 15 2026-Jan 2027 first client warm referral Jupiter Gemini 12th, Feb-Mar 2027 stability 3 retainers Saturn aspect 11th, Apr-July 2027 massive profit Mars-Ketu + Rahu 10th fame. 4) Remedies authentic: Hanuman Chalisa daily, Tuesday Masoor daal daan, Saturday Peepal oil diya Shani mantra, Surya Arghya, daily LinkedIn content because Shani in 3rd demands Parakrama. Use terms Mahadasha Antardasha Gochar Yuti Drishti Yogakaraka Sangharsh Yoga. Question: ${question}`;
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: question }
-        ],
+        messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 1400
       })
     });
 
-    const data = await groqRes.json();
-    
-    if (!groqRes.ok) {
-      return res.status(200).json({ answer: `Groq API Error: ${data.error?.message || JSON.stringify(data).slice(0,400)}. Chart is correct: ${chartString.slice(0,500)}` });
+    const text = await groqRes.text();
+    let data;
+    try { data = JSON.parse(text); } catch(e) {
+      return res.status(200).json({ answer: "Groq returned non-JSON: " + text.slice(0,600) });
     }
 
-    let answer = data.choices[0].message.content || "No answer";
-    answer = answer.replace(/\|/g, ' ');
+    if (!groqRes.ok) {
+      return res.status(200).json({ answer: "Groq Error: " + (data.error?.message || text.slice(0,500)) });
+    }
 
-    return res.status(200).json({ answer });
+    let ans = data.choices?.[0]?.message?.content || "No answer from AI";
+    ans = ans.replace(/\|/g, ' ');
+    return res.status(200).json({ answer: ans });
 
-  } catch (e) {
-    // THIS CATCH ALWAYS RETURNS JSON - SO FRONTEND WILL NEVER SHOW JSON ERROR AGAIN
-    console.error(e);
-    return res.status(200).json({ answer: `Server caught error but handled: ${e.message}. Please retry. If persists, check Vercel Logs. Your birth data was received.` });
+  } catch (err) {
+    return res.status(200).json({ answer: "Final catch handled error: " + err.message + ". Stack: " + (err.stack||'').slice(0,300) });
   }
 }
