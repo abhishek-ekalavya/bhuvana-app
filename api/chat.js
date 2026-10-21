@@ -1,4 +1,3 @@
-// Allow Vercel function to run up to 30 seconds if supported on plan
 export const config = {
   maxDuration: 30,
 };
@@ -29,7 +28,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ answer: "SETUP ERROR: GROQ_API_KEY is missing in Vercel Environment Variables." });
     }
 
-    // Chart Ground Truth
+    // Mathematical Chart Ground Truth
     const astroEngineSummary = `MATHEMATICAL EPHEMERIS GROUND TRUTH:
 - Ascendant (Lagna): Cancer (Karka)
 - Moon Placement: Leo (Simha) in Magha Nakshatra
@@ -84,7 +83,40 @@ FORMAT:
 - Clean paragraphs with bold key phrases.
 - No markdown tables, no pipes (|).`;
 
-    // Fast-executing call to Groq
+    // 1. Inquire Groq for the exact active models for this key
+    let validModel = null;
+    let availableList = [];
+    try {
+      const mListRes = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${groqKey}` }
+      });
+      if (mListRes.ok) {
+        const mListData = await mListRes.json();
+        const rawIds = (mListData.data || []).map(m => m.id);
+        availableList = rawIds;
+        // Find text models, ignore speech/guard/vision/specialty
+        const candidates = rawIds.filter(id => 
+          !id.includes('whisper') && 
+          !id.includes('guard') && 
+          !id.includes('vision') && 
+          !id.includes('orpheus')
+        );
+        // Prioritize standard production text models
+        validModel = candidates.find(id => id.includes('llama3-70b')) ||
+                     candidates.find(id => id.includes('llama-3')) ||
+                     candidates.find(id => id.includes('mixtral')) ||
+                     candidates.find(id => id.includes('gemma')) ||
+                     candidates[0];
+      }
+    } catch (e) {
+      console.error("Failed to query models:", e);
+    }
+
+    if (!validModel) {
+      validModel = 'llama3-70b-8192'; // Standard default fallback
+    }
+
+    // 2. Call the detected working model
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 
@@ -92,24 +124,24 @@ FORMAT:
         'Content-Type': 'application/json' 
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: validModel,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.5,
         max_tokens: 950
       })
     });
 
-    const text = await groqRes.text();
+    const resText = await groqRes.text();
     let data;
     try {
-      data = JSON.parse(text);
-    } catch (e) {
-      return res.status(200).json({ answer: "Upstream AI Service raw response: " + text.slice(0, 500) });
+      data = JSON.parse(resText);
+    } catch (parseErr) {
+      return res.status(200).json({ answer: "AI service returned non-JSON: " + resText.slice(0, 300) });
     }
 
     if (!groqRes.ok) {
       return res.status(200).json({ 
-        answer: "ENGINE ERROR: " + (data?.error?.message || JSON.stringify(data)) 
+        answer: `ENGINE ERROR on model [${validModel}]: ${data?.error?.message || resText}. Available models on key: [${availableList.join(', ')}]` 
       });
     }
 
