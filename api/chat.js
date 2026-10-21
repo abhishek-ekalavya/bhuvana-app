@@ -1,17 +1,66 @@
-export default async function handler(req, res) {
+const https = require('https');
+
+function postJSON(urlStr, headers, data) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(urlStr);
+    const bodyStr = JSON.stringify(data);
+
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname + url.search,
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(bodyStr)
+      },
+      timeout: 9000
+    };
+
+    const req = https.request(options, (res) => {
+      let rawData = '';
+      res.on('data', (chunk) => { rawData += chunk; });
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(rawData);
+          resolve({ status: res.statusCode, data: parsed });
+        } catch (e) {
+          resolve({ status: res.statusCode, text: rawData });
+        }
+      });
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Gateway request timed out'));
+    });
+
+    req.on('error', (err) => {
+      reject(err);
+    });
+
+    req.write(bodyStr);
+    req.end();
+  });
+}
+
+module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
   try {
     let body = {};
     if (typeof req.body === 'string') {
-      try { body = JSON.parse(req.body); } catch(err) { body = {}; }
+      try { body = JSON.parse(req.body); } catch (e) { body = {}; }
     } else if (req.body) {
       body = req.body;
     }
-    
+
     const dob = body.dob || '1982-07-23';
     const tob = body.tob || '06:21';
     const pob = body.pob || 'Dombivli';
@@ -22,10 +71,9 @@ export default async function handler(req, res) {
 
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) {
-      return res.status(200).json({ answer: "SETUP ERROR: GROQ_API_KEY is missing in Vercel Environment Variables." });
+      return res.status(200).json({ answer: "SETUP ERROR: GROQ_API_KEY is not configured in Vercel." });
     }
 
-    // Format Date: DD/MM/YYYY
     let day = '23', month = '07', year = '1982';
     if (dob && dob.includes('-')) {
       const parts = dob.split('-');
@@ -41,8 +89,8 @@ export default async function handler(req, res) {
       formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
-    // Mathematical Ground Truth (Zero external network lag)
-    const astroContext = cachedAstroContext || `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
+    const astroContext = cachedAstroContext || 
+      `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
 
     const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
 
@@ -54,61 +102,68 @@ CLIENT DETAILS:
 - Time of Birth: ${tob} (${formattedTime})
 - Place of Birth: ${pob}
 - Client Question: "${question}"
-- Output Language: ${language} (If Hindi -> pure Hindi in Devanagari. If Hinglish -> natural conversational Hinglish. Else -> clear, grounded English).
+- Output Language: ${language}
 
-STRICT NEGATIVE CONSTRAINTS (ABSOLUTE BRAND DIRECTIVES):
-1. You are the ultimate astrological authority. Never provide meta-disclaimers.
-2. NEVER write phrases such as "not a substitute for expert guidance", "seek guidance from a trusted astrologer", "consult a qualified Vedic Astrologer", "starting point", or "verify with an expert".
-3. NEVER quote fees like ₹2,100, and never suggest phone calls or private sessions.
-4. Keep the delivery confident, precise, and authoritative.
+STRICT CONSTRAINTS:
+1. Speak with calm, definitive authority.
+2. Do not include meta-disclaimers like "consult an astrologer" or "not a substitute for professional advice".
+3. Never quote consultation fees or offer private sessions.
 
 ${
   unlockedRemedy
-    ? `PAID REMEDY MODE (User unlocked their ₹21 Dakshina prescription):
-Deliver the complete, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
-1. Planetary Root Friction: Pinpoint which verified planetary placement requires pacification.
-2. The 9-Week Routine: Detail the starting day, specific time window, and 2 to 3 practical, non-commercial Lal Kitab remedies.
-3. Behavioral Conduct: Ethical disciplines and speech habits during these 9 weeks.
-Conclude with a final word of blessing and confidence. Do not append any disclaimers.`
+    ? `PAID REMEDY MODE:
+Provide the 9-WEEK LAL KITAB REMEDY PROTOCOL:
+1. Identify the root planetary friction.
+2. Detail the exact weekly schedule with 2-3 specific non-commercial remedies.
+3. Outline behavioral guidelines during this period.`
     : `FREE DIAGNOSIS MODE:
-Deliver an authentic, clear astrological reading:
-1. Vedic Foundation: Rising sign (Cancer Lagna), Moon in Magha Nakshatra, and confirmed house placements relevant to their question.
-2. KP Sub-Lord & Timing Analysis: Examine the relevant house cusps and planetary periods to provide a clear, realistic timeline answering their question directly.
-3. Root Bottleneck: State the exact planetary placement causing delay or friction.
-4. Prescriptive Guidance & Remedy Lock:
-   - State clearly that while planetary cycles test endurance, targeted Lal Kitab remedies systematically redirect this energy.
-   - DO NOT provide rituals, totkas, or specific remedies in this free reading.
-   - End with this EXACT sentence: "To harmonize these planetary currents, you can unlock your personalized 9-Week Lal Kitab Remedial Protocol below with a sacred Dakshina of ₹21."`
+1. Outline the Vedic chart foundations for this question.
+2. Provide timing and KP analysis directly answering their query.
+3. Identify the planetary bottleneck.
+4. Conclude with this exact sentence:
+"To harmonize these planetary currents, you can unlock your personalized 9-Week Lal Kitab Remedial Protocol below with a sacred Dakshina of ₹21."`
 }
 
 FORMAT:
-- Clean paragraphs with bold key phrases.
-- No markdown tables, no pipes (|).`;
+- Clean paragraphs with bold key phrases. No markdown tables.`;
 
-    // Direct, ultra-fast generation via gemma2-9b-it (responds in ~1.2s on Groq)
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${groqKey}`, 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({
-        model: 'gemma2-9b-it',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.5,
-        max_tokens: 850
-      })
-    });
+    const groqPayload = {
+      model: 'gemma2-9b-it',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.5,
+      max_tokens: 800
+    };
 
-    const data = await groqRes.json();
-    if (!groqRes.ok) {
-      return res.status(200).json({ 
-        answer: "ENGINE NOTICE: " + (data?.error?.message || "Please re-submit your query.") 
+    const response = await postJSON(
+      'https://api.groq.com/openai/v1/chat/completions',
+      { 'Authorization': `Bearer ${groqKey}` },
+      groqPayload
+    );
+
+    if (response.status !== 200 || !response.data || !response.data.choices) {
+      return res.status(200).json({
+        answer: "ENGINE NOTICE: " + (response.data && response.data.error ? response.data.error.message : "Service busy. Please try again.")
       });
     }
 
-    let answer = data.choices?.[0]?.message?.content?.replace(/\|/g, ' ').trim() || "No response generated.";
+    let answer = response.data.choices[0].message.content.trim();
     
-    // Programmatic filter to strip any residual disclaimer sentences
+    // Clean disclaimers
     answer = answer.replace(/Remember,?\s*these remedies are tailored.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Seek guidance from a trusted
+    answer = answer.replace(/Seek guidance from a trusted.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/not a substitute for expert guidance.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/consult a qualified.*?astrologer.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/consult with an expert.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/Please consult.*?(?=\n|$)/gi, '').trim();
+
+    return res.status(200).json({
+      answer: answer,
+      astroContext: astroContext
+    });
+
+  } catch (err) {
+    return res.status(200).json({
+      answer: "Server error handled: " + err.message
+    });
+  }
+};
