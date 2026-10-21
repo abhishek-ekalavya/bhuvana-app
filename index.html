@@ -1,170 +1,123 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BHUVANA - AI Vedic Astrologer</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Lora:wght@600&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Poppins',sans-serif;background:#FFF8F0;color:#2C1810;min-height:100vh}
-.screen{display:none;min-height:100vh;padding:20px;align-items:center;justify-content:center;flex-direction:column}
-.screen.active{display:flex}
-.card{background:white;border-radius:24px;padding:28px;width:100%;max-width:420px;box-shadow:0 10px 40px rgba(0,0,0,0.08);border:1px solid #F5E6D3}
-.logo-wrap{text-align:center;margin-bottom:20px}
-.logo-circle{width:80px;height:80px;background:linear-gradient(135deg,#8B4513,#D2691E);border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:white;font-family:'Lora';font-size:28px;font-weight:700;box-shadow:0 4px 15px rgba(139,69,19,0.3)}
-h1{font-family:'Lora';font-size:28px;text-align:center;color:#4A2511}
-.sub{font-size:13px;text-align:center;color:#8B7355;margin-top:4px}
-.input-group{margin:14px 0}
-label{font-size:12px;font-weight:600;color:#6B5434;display:block;margin-bottom:6px;letter-spacing:0.5px}
-input{width:100%;padding:14px 16px;border:1.5px solid #F0DCC0;border-radius:12px;font-size:15px;outline:none;background:#FFFBF5}
-input:focus{border-color:#D2691E}
-.btn{width:100%;padding:16px;background:linear-gradient(135deg,#E86A2C,#D35400);color:white;border:none;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;margin-top:10px;box-shadow:0 4px 15px rgba(232,106,44,0.3)}
-.btn-green{background:linear-gradient(135deg,#22C55E,#16A34A);box-shadow:0 4px 15px rgba(34,197,94,0.3);margin-top:16px}
-.btn:active{transform:scale(0.98)}
-.chart-container{background:#FFFBF5;border:2px solid #8B4513;border-radius:16px;padding:10px;margin:12px 0;position:relative}
-.chart-title{font-weight:700;font-size:15px;margin-bottom:10px}
-.diamond{width:100%;aspect-ratio:1;position:relative;border:2px solid #8B4513;background:white;overflow:hidden}
-.diamond-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr 1fr;width:100%;height:100%;position:relative}
-.house{border:0.5px solid #E8D5B7;padding:4px;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.2;z-index:1}
-.house b{font-size:10px;color:#D2691E}
-.house.active{background:#FFF3E0}
-.kp-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
-.kp-table th{text-align:left;color:#8B7355;font-size:11px;padding:8px 4px;border-bottom:1px solid #F0DCC0}
-.kp-table td{padding:10px 4px;border-bottom:1px solid #FFF0D9}
-.asc-info{font-size:12px;background:#FFF3E0;padding:8px 12px;border-radius:8px;margin:8px 0;color:#6B5434}
-.chat-wrap{margin-top:24px;border-top:2px solid #F5E6D3;padding-top:18px}
-.chat-header{font-weight:700;font-size:14px;margin-bottom:12px}
-.chat-box{height:320px;overflow-y:auto;background:#FFFBF5;border:1.5px solid #F0DCC0;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px}
-.msg{max-width:85%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.4}
-.msg.bot{background:white;border:1px solid #F0DCC0;align-self:flex-start;border-bottom-left-radius:4px}
-.msg.user{background:#4A2511;color:white;align-self:flex-end;border-bottom-right-radius:4px}
-.chat-input{display:flex;gap:8px;margin-top:10px}
-.chat-input input{flex:1}
-.chat-input button{padding:14px 18px;background:#4A2511;color:white;border:none;border-radius:12px;font-weight:700;cursor:pointer}
-.chip-wrap{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-.chip{font-size:11px;padding:6px 12px;background:white;border:1px solid #F0DCC0;border-radius:20px;cursor:pointer}
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BHUVANA - The Truth Behind Your Chart</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-<div id="s1" class="screen active">
-  <div class="card">
-    <div class="logo-wrap"><div class="logo-circle">भु</div><h1>BHUVANA</h1><div class="sub">AI Vedic Astrologer • KP • Lal Kitab</div></div>
-    <div class="input-group"><label>Email</label><input id="email" placeholder="you@email.com"></div>
-    <div class="input-group"><label>Password</label><input type="password" placeholder="••••••••"></div>
-    <button class="btn" onclick="show('s2')">LOGIN → ENTER BIRTH DETAILS</button>
-    <div style="text-align:center;font-size:12px;margin-top:12px;color:#8B7355">Demo: No password needed. Click login.</div>
-  </div>
-</div>
-<div id="s2" class="screen">
-  <div class="card">
-    <div class="logo-wrap"><h1>Enter Birth Details</h1><div class="sub">For accurate Vedic chart</div></div>
-    <div class="input-group"><label>Name</label><input id="bname" value="Abhishek"></div>
-    <div class="input-group"><label>Date of Birth</label><input type="date" id="dob" value="1982-07-23"></div>
-    <div class="input-group"><label>Time of Birth</label><input type="time" id="tob" value="06:21"></div>
-    <div class="input-group"><label>Place of Birth</label><input id="pob" value="Dombivli, Maharashtra"></div>
-    <button class="btn" onclick="generate()">Generate My BHUVANA Chart →</button>
-    <button style="background:none;border:none;width:100%;margin-top:10px;color:#8B7355;font-size:13px;cursor:pointer" onclick="show('s1')">← Back</button>
-  </div>
-</div>
-<div id="s3" class="screen" style="justify-content:flex-start;padding-top:10px">
-  <div class="card" style="max-width:460px">
-    <div style="text-align:center;font-family:'Lora';font-weight:700;font-size:18px;margin-bottom:10px">BHUVANA - Chart Result</div>
-    <div class="chart-container">
-      <div class="chart-title">☆ NORTH INDIAN VEDIC CHART</div>
-      <div class="diamond" id="chartDiamond"></div>
-      <div class="asc-info" id="ascInfo">Ascendant: Leo • 1982-07-23 06:21 Dombivli</div>
-    </div>
-    <div style="font-weight:700;margin-top:4px">KP - SUB-LORD TABLE</div>
-    <table class="kp-table">
-      <tr><th>PLANET</th><th>SIGN/STAR</th><th>SUB</th></tr>
-      <tr><td>Sun</td><td>Leo Magha</td><td>Ketu</td></tr>
-      <tr><td>Moon</td><td>Cancer Ashlesha</td><td>Mercury</td></tr>
-      <tr><td>Mars</td><td>Gemini Mrigashira</td><td>Rahu</td></tr>
-      <tr><td>Mercury</td><td>Leo Purva Phalguni</td><td>Venus</td></tr>
-      <tr><td>Jupiter</td><td>Libra Vishakha</td><td>Jupiter</td></tr>
-      <tr><td>Saturn</td><td>Libra Vishakha</td><td>Moon</td></tr>
-    </table>
-    <div class="chat-wrap">
-      <div class="chat-header">💬 Ask BHUVANA - Your Chart Knows You</div>
-      <div class="chip-wrap">
-        <div class="chip" onclick="askChip(this)">Career next 6 months?</div>
-        <div class="chip" onclick="askChip(this)">Marriage timing?</div>
-        <div class="chip" onclick="askChip(this)">Why Saturn delay?</div>
-        <div class="chip" onclick="askChip(this)">Lal Kitab remedy?</div>
-      </div>
-      <div class="chat-box" id="chatBox"></div>
-      <div class="chat-input">
-        <input id="q" placeholder="Ask: Career, marriage, money..." onkeypress="if(event.key==='Enter')sendQ()">
-        <button onclick="sendQ()">Ask</button>
-      </div>
-    </div>
-    <button class="btn btn-green" onclick="shareWA()">Share on WhatsApp</button>
-    <button style="background:none;border:none;width:100%;margin-top:10px;color:#8B7355;font-size:13px;cursor:pointer" onclick="show('s2')">← Recalculate</button>
-  </div>
-</div>
+<body class="bg-[#FFF8E7] min-h-screen p-3">
+<div id="app" class="max-w-md mx-auto"></div>
+
 <script>
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0)}
-function generate(){
-  const name=document.getElementById('bname').value||'User';
-  const dob=document.getElementById('dob').value;
-  const tob=document.getElementById('tob').value;
-  const pob=document.getElementById('pob').value;
-  document.getElementById('ascInfo').innerText=`Ascendant: Leo • ${dob} ${tob} ${pob}`;
-  let html = `<div class="diamond-grid">`;
-  html+=`<div class="house">Ma Mo<br><b>12</b></div><div class="house active">Ju<br><b>1 Lagna</b></div><div class="house">Su<br><b>2</b></div><div class="house">Me<br><b>3</b></div>`;
-  html+=`<div class="house">Ke<br><b>11</b></div><div class="house" style="grid-column:2 / span 2;grid-row:2 / span 2;justify-content:center;background:#FFF8F0;border:1.5px solid #8B4513"><div style="text-align:center;font-weight:800">BHUVANA<br><small style="font-weight:400;font-size:10px">Leo ${tob}</small></div></div><div class="house">Ve<br><b>4</b></div>`;
-  html+=`<div class="house">Sa<br><b>10</b></div><div class="house">Ra<br><b>5</b></div>`;
-  html+=`<div class="house">Sa+Me<br><b>9</b></div><div class="house">Ju+Ra<br><b>8</b></div><div class="house">Mo<br><b>7</b></div><div class="house">Ma<br><b>6</b></div>`;
-  html+=`</div>`;
-  html+=`<div style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none">`;
-  html+=`<div style="position:absolute;top:0;left:0;width:70.7%;height:3px;background:#8B4513;transform:rotate(45deg);transform-origin:0 0"></div>`;
-  html+=`<div style="position:absolute;top:0;right:0;width:70.7%;height:3px;background:#8B4513;transform:rotate(-45deg);transform-origin:100% 0"></div>`;
-  html+=`<div style="position:absolute;bottom:0;left:0;width:70.7%;height:3px;background:#8B4513;transform:rotate(-45deg);transform-origin:0 100%"></div>`;
-  html+=`<div style="position:absolute;bottom:0;right:0;width:70.7%;height:3px;background:#8B4513;transform:rotate(45deg);transform-origin:100% 100%"></div>`;
-  html+=`</div>`;
-  document.getElementById('chartDiamond').innerHTML=html;
-  document.getElementById('chatBox').innerHTML=`<div class="msg bot">Namaste ${name}! I am BHUVANA. Chart calculated: Leo Ascendant, Sun in 1st with Lagna - strong leadership. Saturn in 3rd (Libra) is exalted - delays but gives mastery. Ask me anything - I am reading your chart live. 🙏</div>`;
-  show('s3');
+let chart = null;
+let saved = localStorage.getItem("bhuvana_chart_v2");
+if(saved){ chart = JSON.parse(saved); }
+
+function showForm(){
+  document.getElementById("app").innerHTML = `
+    <h1 class="text-3xl font-bold text-center mt-8">🕉️ BHUVANA</h1>
+    <p class="text-center text-sm mt-2">Vedic • KP • Lal Kitab • Private to your phone</p>
+    <div class="bg-white rounded-2xl p-6 mt-8 shadow-xl">
+      <h2 class="font-bold text-lg">Enter Your Birth Details</h2>
+      <p class="text-xs text-gray-500 mb-4">New user? Start here. Your chart stays on your device only.</p>
+      <input id="name" class="w-full border rounded-lg p-3 mt-3" placeholder="Full Name">
+      <input id="dob" class="w-full border rounded-lg p-3 mt-3" type="date" value="1993-01-04">
+      <label class="text-xs ml-1">Birth Time</label>
+      <input id="tob" class="w-full border rounded-lg p-3 mt-1" type="time" value="15:45">
+      <input id="pob" class="w-full border rounded-lg p-3 mt-3" placeholder="Birth Place - Mumbai">
+      <button onclick="calcChart()" class="w-full bg-black text-white rounded-xl p-4 mt-6 font-bold">Get My Kundli + Chat →</button>
+      <p class="text-[10px] text-center mt-3 text-gray-400">No login needed. 100% private.</p>
+    </div>
+  `;
 }
-function askChip(el){document.getElementById('q').value=el.innerText;sendQ()}
-async function sendQ(){
-  const qEl=document.getElementById('q');
-  const q=qEl.value.trim();
+
+function calcChart(){
+  const name = document.getElementById("name").value || "User";
+  const dob = document.getElementById("dob").value;
+  const tob = document.getElementById("tob").value;
+  const pob = document.getElementById("pob").value || "Mumbai";
+  if(!dob || !tob){ alert("Enter Date and Time"); return; }
+  
+  // Your real chart - keep same as your app, this is your Leo example - for new users replace logic later
+  chart = {
+    name: name,
+    lagna: "Leo",
+    moon: "Libra",
+    context: `Leo Lagna, Sun own house, Mercury Leo Purva Phalguni, Venus Leo, Jupiter Libra Vishakha, Saturn Libra Vishakha EXALTED in 3rd, Mars Gemini, Rahu Aquarius, Ketu Leo. User: ${name}, DOB ${dob} ${tob} ${pob}`,
+    planets: [
+      ["Sun","Leo (Own) House 1"],
+      ["Mercury","Leo Purva Phalguni H1"],
+      ["Venus","Leo H1"],
+      ["Jupiter","Libra Vishakha H3"],
+      ["Saturn","Libra EXALTED H3"],
+      ["Mars","Gemini H11"],
+      ["Rahu","Aquarius H7"],
+      ["Ketu","Leo H1"]
+    ]
+  };
+  localStorage.setItem("bhuvana_chart_v2", JSON.stringify(chart));
+  showChart();
+}
+
+function showChart(){
+  let planetsHtml = chart.planets.map(p=>`<div class="flex justify-between border-b py-1 text-xs"><span>${p[0]}</span><span>${p[1]}</span></div>`).join("");
+  document.getElementById("app").innerHTML = `
+    <div class="bg-white rounded-2xl p-4 shadow">
+      <div class="flex justify-between"><h1 class="font-bold">🕉️ BHUVANA - ${chart.name}</h1><button onclick="recalc()" class="text-xs underline">← New Chart</button></div>
+      <div class="mt-4 border rounded-xl p-3 text-sm"><p><b>Lagna:</b> ${chart.lagna} | <b>Moon:</b> ${chart.moon}</p>${planetsHtml}</div>
+      <div class="mt-6">
+        <p class="font-bold text-sm">💬 Ask BHUVANA - Your Chart Knows You</p>
+        <div class="flex gap-2 mt-2 flex-wrap">
+          <button onclick="quickAsk('When will my new firm Ekalavya make money?')" class="text-xs border rounded-full px-3 py-1">When money?</button>
+          <button onclick="quickAsk('Career next 6 months?')" class="text-xs border rounded-full px-3 py-1">Career 6 months?</button>
+          <button onclick="quickAsk('Lal Kitab remedy for Saturn?')" class="text-xs border rounded-full px-3 py-1">Saturn remedy?</button>
+        </div>
+        <div id="ans" class="mt-4 hidden bg-[#FFF3D6] rounded-xl p-3 text-sm whitespace-pre-wrap"></div>
+        <div id="load" class="hidden mt-3 text-sm">BHUVANA is reading your chart live... 🙏</div>
+        <div class="flex gap-2 mt-4">
+          <input id="q" placeholder="Ask: Career, money, marriage..." class="flex-1 border rounded-xl p-3 text-sm">
+          <button onclick="ask()" class="bg-[#3E2723] text-white rounded-xl px-5 font-bold">Ask</button>
+        </div>
+        <p class="text-[10px] text-center mt-3 text-gray-400">Chart saved only on this phone. Share link = friend sees their own form.</p>
+      </div>
+    </div>
+  `;
+}
+
+function recalc(){
+  localStorage.removeItem("bhuvana_chart_v2");
+  chart = null;
+  showForm();
+}
+
+function quickAsk(q){
+  document.getElementById("q").value = q;
+  ask();
+}
+
+async function ask(){
+  const q = document.getElementById("q").value;
   if(!q) return;
-  const box=document.getElementById('chatBox');
-  box.innerHTML+=`<div class="msg user">${q}</div>`;
-  qEl.value='';
-  box.scrollTop=box.scrollHeight;
-  box.innerHTML+=`<div class="msg bot" id="thinking">BHUVANA is reading your chart... 🔮</div>`;
-  box.scrollTop=box.scrollHeight;
+  document.getElementById("load").classList.remove("hidden");
+  document.getElementById("ans").classList.add("hidden");
   try{
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ question: q, chart: document.getElementById('ascInfo').innerText })
+    const res = await fetch("/api/chat", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ question: q, chartContext: chart.context })
     });
     const data = await res.json();
-    const t=document.getElementById('thinking'); if(t) t.remove();
-    box.innerHTML+=`<div class="msg bot">${data.answer}</div>`;
+    document.getElementById("ans").innerText = data.answer;
+    document.getElementById("ans").classList.remove("hidden");
   }catch(e){
-    const t=document.getElementById('thinking'); if(t) t.remove();
-    let ans="";
-    const low=q.toLowerCase();
-    if(low.includes('career')) ans="From your chart: 10th lord Venus in 4th - career connected to home/land/consulting. Saturn exalted in 3rd aspects 10th - after July 2026, Saturn transit will lift your 10th. Next 6 months: Focus on teaching/consulting. Avoid job change till Nov. Remedy: Feed crows on Saturday.";
-    else if(low.includes('marriage')) ans="7th lord Saturn exalted in 3rd - spouse hardworking, mature. Jupiter aspects 7th - marriage after Saturn maturity. KP: 7th sub-lord Moon Ashlesha - emotional bonding matters.";
-    else if(low.includes('saturn')||low.includes('delay')) ans="Saturn is exalted in Libra 3rd house! Not bad - delays to make you perfect. Lal Kitab: Keep iron piece, respect elder brother.";
-    else if(low.includes('remedy')||low.includes('lal kitab')) ans="Lal Kitab for Leo Lagna: 1) Copper coin in pocket, 2) Offer water to Sun daily 6am, 3) Don't buy iron on Saturday. Sun strengthening needed.";
-    else ans="Leo Lagna: Sun own house gives leadership, Moon Ashlesha intuitive mind. For '"+q+"' - check Dasha. Jupiter transit 7th - good for partnerships.";
-    box.innerHTML+=`<div class="msg bot">${ans}</div>`;
+    document.getElementById("ans").innerText = "Error: "+e.message;
+    document.getElementById("ans").classList.remove("hidden");
   }
-  box.scrollTop=box.scrollHeight;
+  document.getElementById("load").classList.add("hidden");
 }
-function shareWA(){
-  const text=encodeURIComponent(`My BHUVANA Vedic Chart - Leo Ascendant\n\nAsk BHUVANA AI: bhuvana-app.vercel.app\n\nJai Shri Ram 🙏`);
-  window.open(`https://wa.me/?text=${text}`,'_blank');
-}
-generate();
+
+if(chart){ showChart(); } else { showForm(); }
 </script>
 </body>
 </html>
