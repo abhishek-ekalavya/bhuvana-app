@@ -5,28 +5,63 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BHUVANA</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<style>body{font-size:16px}</style>
 </head>
-<body class="bg-[#FFF8E7] min-h-screen p-3">
+<body class="bg-[#FFF8E7] min-h-screen p-4">
 <div id="app" class="max-w-md mx-auto"></div>
 <script>
-let chart=null;
+let chart=null; let currentLang = localStorage.getItem("bhuvana_lang") || "en";
 try{let s=localStorage.getItem("bhuvana_chart_v2");if(s)chart=JSON.parse(s);}catch(e){localStorage.clear();chart=null;}
+
 function showForm(){
-document.getElementById("app").innerHTML=`<h1 class="text-3xl font-bold text-center mt-8">🕉️ BHUVANA</h1><p class="text-center text-xs mt-2">Private to your phone</p><div class="bg-white rounded-2xl p-6 mt-8 shadow-xl"><h2 class="font-bold">Enter Birth Details</h2><input id="name" class="w-full border rounded-lg p-3 mt-3" placeholder="Full Name"><input id="dob" class="w-full border rounded-lg p-3 mt-3" type="date" value="1993-01-04"><input id="tob" class="w-full border rounded-lg p-3 mt-3" type="time" value="15:45"><input id="pob" class="w-full border rounded-lg p-3 mt-3" placeholder="Mumbai"><button onclick="calc()" class="w-full bg-black text-white rounded-xl p-4 mt-6 font-bold">Get My Kundli →</button><button onclick="localStorage.clear();location.reload();" class="w-full text-xs mt-3 underline">Clear Data</button></div>`;
+document.getElementById("app").innerHTML=`
+<h1 class="text-4xl font-bold text-center mt-6">🕉️ BHUVANA</h1>
+<p class="text-center text-base mt-2">Private to your phone</p>
+<div class="bg-white rounded-2xl p-6 mt-8 shadow-xl">
+<h2 class="font-bold text-xl">Enter Birth Details</h2>
+<input id="name" class="w-full border-2 rounded-xl p-4 mt-4 text-lg" placeholder="Full Name">
+<input id="dob" class="w-full border-2 rounded-xl p-4 mt-4 text-lg" type="date" value="1993-01-04">
+<input id="tob" class="w-full border-2 rounded-xl p-4 mt-4 text-lg" type="time" value="15:45">
+<input id="pob" class="w-full border-2 rounded-xl p-4 mt-4 text-lg" placeholder="Mumbai">
+<button onclick="calc()" class="w-full bg-black text-white rounded-xl p-5 mt-6 font-bold text-lg">Get My Kundli →</button>
+<button onclick="localStorage.clear();location.reload();" class="w-full text-sm mt-4 underline">Clear Data</button>
+</div>`;
 }
+
 function calc(){
 const name=document.getElementById("name").value||"User";
 const dob=document.getElementById("dob").value;const tob=document.getElementById("tob").value;const pob=document.getElementById("pob").value||"Mumbai";
-chart={name:name,lagna:"Leo",context:`Leo Lagna Sun own, Mercury Leo, Venus Leo, Jupiter Libra Vishakha, Saturn EXALTED 3rd, Mars Gemini, Rahu Aquarius. User ${name} DOB ${dob} ${tob} ${pob}`,planets:[["Sun","Leo Own"],["Mercury","Leo"],["Venus","Leo"],["Saturn","EXALTED Libra H3"],["Jupiter","Libra H3"],["Mars","Gemini H11"]]};
+chart={name:name,lagna:"Leo",context:`Leo Lagna Sun own, Mercury Leo, Venus Leo, Jupiter Libra, Saturn EXALTED Libra H3, Mars Gemini, Rahu Aquarius. User ${name} DOB ${dob} ${tob} ${pob}`,planets:[["Sun","Leo Own"],["Mercury","Leo"],["Venus","Leo"],["Saturn","EXALTED Libra H3"],["Jupiter","Libra H3"],["Mars","Gemini H11"]]};
 localStorage.setItem("bhuvana_chart_v2",JSON.stringify(chart));showChart();
 }
+
 function showChart(){
-let ph=chart.planets.map(p=>`<div class="flex justify-between border-b py-1 text-xs"><span>${p[0]}</span><span>${p[1]}</span></div>`).join("");
-document.getElementById("app").innerHTML=`<div class="bg-white rounded-2xl p-4 shadow"><div class="flex justify-between"><b>🕉️ ${chart.name}</b><button onclick="localStorage.clear();location.reload();" class="text-xs underline">← New</button></div><div class="mt-3 border rounded-xl p-3 text-sm"><b>Lagna:</b> ${chart.lagna}${ph}</div><div class="mt-6"><p class="font-bold text-sm">Ask BHUVANA</p><div id="ans" class="mt-3 hidden bg-[#FFF3D6] rounded-xl p-3 text-sm whitespace-pre-wrap"></div><div id="load" class="hidden mt-2 text-sm">Reading...</div><div class="flex gap-2 mt-4"><input id="q" placeholder="When will money come?" class="flex-1 border rounded-xl p-3 text-sm"><button onclick="ask()" class="bg-black text-white rounded-xl px-5">Ask</button></div></div></div>`;
+let ph=chart.planets.map(p=>`<div class="flex justify-between border-b py-3 text-base"><span>${p[0]}</span><span class="font-medium">${p[1]}</span></div>`).join("");
+document.getElementById("app").innerHTML=`
+<div class="bg-white rounded-2xl p-5 shadow">
+<div class="flex justify-between items-center"><b class="text-xl">🕉️ ${chart.name}</b><button onclick="localStorage.clear();location.reload();" class="text-sm underline">← New</button></div>
+<div class="mt-4 border-2 rounded-xl p-4"><p class="text-lg"><b>Lagna:</b> ${chart.lagna}</p>${ph}</div>
+<div class="mt-8">
+<p class="font-bold text-lg">Ask BHUVANA</p>
+<div class="flex gap-2 mt-3">
+<select id="lang" onchange="saveLang()" class="border-2 rounded-xl p-3 text-base font-bold">
+<option value="en" ${currentLang==="en"?"selected":""}>English</option>
+<option value="hi" ${currentLang==="hi"?"selected":""}>Hindi</option>
+<option value="hinglish" ${currentLang==="hinglish"?"selected":""}>Hinglish</option>
+</select>
+<div class="flex gap-1 ml-auto"><button onclick="changeFont(-1)" class="border-2 rounded-xl px-4 py-2 text-lg">A-</button><button onclick="changeFont(1)" class="border-2 rounded-xl px-4 py-2 text-lg">A+</button></div>
+</div>
+<div id="ans" class="mt-5 hidden bg-[#FFF3D6] rounded-xl p-5 text-lg leading-7 whitespace-pre-wrap"></div>
+<div id="load" class="hidden mt-3 text-base">Reading your chart...</div>
+<div class="flex gap-2 mt-5"><input id="q" placeholder="When will money come?" class="flex-1 border-2 rounded-xl p-4 text-lg"><button onclick="ask()" class="bg-black text-white rounded-xl px-6 text-lg font-bold">Ask</button></div>
+</div></div>`;
 }
+
+function saveLang(){ currentLang=document.getElementById("lang").value; localStorage.setItem("bhuvana_lang", currentLang); }
+function changeFont(d){ let el=document.getElementById("ans"); let s=parseInt(window.getComputedStyle(el).fontSize); el.style.fontSize=(s+d*2)+"px"; }
 async function ask(){
 const q=document.getElementById("q").value;if(!q)return;document.getElementById("load").classList.remove("hidden");
-try{const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q,chartContext:chart.context})});const d=await r.json();document.getElementById("ans").innerText=d.answer;document.getElementById("ans").classList.remove("hidden");}catch(e){document.getElementById("ans").innerText="Error";document.getElementById("ans").classList.remove("hidden");}
+try{const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q,chartContext:chart.context,language:currentLang})});const d=await r.json();document.getElementById("ans").innerText=d.answer;document.getElementById("ans").classList.remove("hidden");document.getElementById("ans").style.fontSize="18px";}catch(e){document.getElementById("ans").innerText="Error";document.getElementById("ans").classList.remove("hidden");}
 document.getElementById("load").classList.add("hidden");
 }
 if(chart&&chart.name)showChart();else showForm();
