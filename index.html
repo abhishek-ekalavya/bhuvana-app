@@ -122,3 +122,143 @@ function App() {
       <div style={{textAlign: "center", marginBottom: "16px"}}>
         <h1 style={{margin: "4px 0", color: "#8B4513", fontSize: "26px", fontWeight: "800"}}>
           🔮 BHUVANA
+        </h1>
+        <p style={{margin: "0", fontSize: "14px", fontWeight: "600", color: "#5a3e1b"}}>
+          Vedic &amp; KP Astrological Guidance
+        </p>
+        <span style={{display: "inline-block", marginTop: "4px", fontSize: "11px", color: "#7A654C"}}>
+          Krishnamurti Paddhati Cuspal Sub-Lords • Lal Kitab Protocols
+        </span>
+      </div>
+
+      <div style={{background: "#FFFFFF", padding: "18px", borderRadius: "14px", boxShadow: "0 3px 12px rgba(139,69,19,0.08)"}}>
+        <label>Date of Birth</label>
+        <input type="date" value={dob} onChange={e => setDob(e.target.value)} />
+
+        <label>Exact Time of Birth</label>
+        <input type="time" value={tob} onChange={e => setTob(e.target.value)} />
+
+        <label>Place of Birth (City, State / Country)</label>
+        <input 
+          placeholder="e.g. Mumbai, India" 
+          value={pob} 
+          onChange={e => setPob(e.target.value)} 
+        />
+
+        <label>Preferred Language</label>
+        <select value={lang} onChange={e => setLang(e.target.value)}>
+          <option value="english">English (Detailed Astrological Guidance)</option>
+          <option value="hi">Hindi (हिन्दी)</option>
+          <option value="hinglish">Hinglish</option>
+        </select>
+
+        <label>Your Question</label>
+        <textarea 
+          placeholder="Ask clearly about career, job changes, marriage, finances, or relocation..."
+          value={q} 
+          onChange={e => setQ(e.target.value)} 
+          rows={3} 
+        />
+
+        <button 
+          onClick={askReading} 
+          disabled={loading} 
+          style={{
+            width: "100%",
+            padding: "14px",
+            marginTop: "6px",
+            background: "#8B4513",
+            color: "white",
+            border: "none",
+            borderRadius: "10px",
+            fontSize: "16px",
+            fontWeight: "700",
+            cursor: "pointer",
+            boxShadow: "0 2px 6px rgba(139,69,19,0.25)"
+          }}
+        >
+          {loading ? "Analyzing Kundali & KP Sub-Lords..." : "GET AUTHENTIC READING"}
+        </button>
+      </div>
+
+      {ans && (
+        <div style={{
+          marginTop: "20px",
+          background: "#FFFDF6",
+          border: "1.5px solid #E2C99B",
+          padding: "18px",
+          borderRadius: "14px",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.05)"
+        }}>
+          <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #EAD8B8", paddingBottom: "8px", marginBottom: "12px"}}>
+            <b style={{color: "#8B4513", fontSize: "16px"}}>Kundali Vachan &amp; Guidance</b>
+            <div>
+              <button onClick={() => setFs(s => Math.min(22, s + 1))} style={{padding: "4px 8px", cursor: "pointer", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", fontWeight: "bold"}}>A+</button>
+              <button onClick={() => setFs(s => Math.max(13, s - 1))} style={{marginLeft: "6px", padding: "4px 8px", cursor: "pointer", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", fontWeight: "bold"}}>A-</button>
+            </div>
+          </div>
+          
+          <div style={{whiteSpace: "pre-wrap", fontSize: fs, lineHeight: "1.75", color: "#2B2118", fontFamily: "Georgia, serif"}}>
+            {ans}
+          </div>
+
+          <div style={{
+            marginTop: "22px",
+            padding: "16px",
+            background: "#FFF4DD",
+            border: "1.5px dashed #D48806",
+            borderRadius: "12px",
+            textAlign: "center"
+          }}>
+            <h3 style={{margin: "0 0 6px 0", color: "#873800", fontSize: "17px"}}>
+              🕉️ Unlock Your 9-Week Lal Kitab Remedial Protocol
+            </h3>
+            <p style={{margin: "0 0 14px 0", fontSize: "13px", color: "#613400", lineHeight: "1.5"}}>
+              Neutralize the planetary friction pinpointed in your reading. Receive the exact day-wise schedule, symbolic totkas, and daily disciplines mapped to your chart.
+            </p>
+            <button
+              onClick={unlockRemedyProtocol}
+              disabled={remedyLoading}
+              style={{
+                background: "#D48806",
+                color: "#FFFFFF",
+                padding: "12px 24px",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "15px",
+                fontWeight: "700",
+                cursor: "pointer",
+                boxShadow: "0 2px 6px rgba(212,136,6,0.3)"
+              }}
+            >
+              {remedyLoading ? "Formulating Remedial Regimen..." : "UNLOCK REMEDY PROTOCOL (₹21 DAKSHINA)"}
+            </button>
+          </div>
+
+          {remedyAns && (
+            <div style={{
+              marginTop: "16px",
+              background: "#F6FFED",
+              border: "1.5px solid #B7EB8F",
+              padding: "16px",
+              borderRadius: "12px"
+            }}>
+              <b style={{color: "#237804", fontSize: "15px", display: "block", marginBottom: "8px"}}>
+                🌿 Prescribed 9-Week Lal Kitab Regimen:
+              </b>
+              <div style={{whiteSpace: "pre-wrap", fontSize: fs, lineHeight: "1.75", color: "#135200", fontFamily: "Georgia, serif"}}>
+                {remedyAns}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
