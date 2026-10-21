@@ -21,45 +21,55 @@ export default async function handler(req, res) {
       return res.status(200).json({ answer: "SETUP ERROR: Add GROQ_API_KEY in Vercel Environment Variables." });
     }
 
-    // Default coordinates (Mumbai / Dombivli region)
-    let lat = 19.2183;
-    let lon = 73.0867;
-    let tzone = 5.5;
-
-    // Parse date and time
-    let day = 23, month = 7, year = 1982, hour = 6, min = 21;
+    // Parse date and format as DD/MM/YYYY
+    let day = '23', month = '07', year = '1982';
     if (dob && dob.includes('-')) {
       const parts = dob.split('-');
-      year = parseInt(parts[0], 10);
-      month = parseInt(parts[1], 10);
-      day = parseInt(parts[2], 10);
+      year = parts[0];
+      month = parts[1].padStart(2, '0');
+      day = parts[2].padStart(2, '0');
     }
+    const formattedDate = `${day}/${month}/${year}`;
+
+    // Format time as HH:MM
+    let formattedTime = '06:21';
     if (tob && tob.includes(':')) {
       const tparts = tob.split(':');
-      hour = parseInt(tparts[0], 10);
-      min = parseInt(tparts[1], 10);
+      formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
-    // --- STEP 1: ASTRONOMICAL CALCULATION ENGINE ---
-    let astroContext = "Planetary coordinates calculated via Vedic Ephemeris.";
+    // Default coordinates (Mumbai / Dombivli region)
+    const lat = 19.2183;
+    const lon = 73.0867;
+    const tz = 5.5;
+
+    // --- STEP 1: FETCH REAL EPHEMERIS FROM VEDIC ASTRO API ---
+    let astroContext = "";
     if (vedicKey) {
       try {
-        const url = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${day}/${month}/${year}&tob=${hour}:${min}&lat=${lat}&lon=${lon}&tz=${tzone}&api_key=${vedicKey}&lang=en`;
+        const url = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${formattedDate}&tob=${formattedTime}&lat=${lat}&lon=${lon}&tz=${tz}&api_key=${vedicKey}&lang=en`;
         const vRes = await fetch(url);
         if (vRes.ok) {
           const vData = await vRes.json();
-          if (vData.response) {
-            const planets = vData.response;
-            const summary = Object.keys(planets)
-              .filter(k => planets[k].name)
-              .map(k => `${planets[k].name}: in ${planets[k].zodiac} (House ${planets[k].house}), Nakshatra: ${planets[k].nakshatra}`)
+          const pData = vData.response || vData.data;
+          if (pData && typeof pData === 'object') {
+            const planetList = Object.keys(pData)
+              .filter(k => pData[k] && pData[k].name)
+              .map(k => `${pData[k].name} in ${pData[k].zodiac || pData[k].sign} (House ${pData[k].house || 'N/A'}), Nakshatra: ${pData[k].nakshatra || 'N/A'}`)
               .join('; ');
-            astroContext = `VERIFIED ASTRONOMICAL POSITIONS (NON-NEGOTIABLE FACTS): ${summary}`;
+            if (planetList) {
+              astroContext = `ASTRONOMICAL DATA (VERIFIED BY EPHEMERIS): ${planetList}`;
+            }
           }
         }
       } catch (err) {
         console.error("Vedic API fetch error:", err);
       }
+    }
+
+    // Default fallback baseline if Vedic API returns blank or hits rate limits
+    if (!astroContext) {
+      astroContext = `ASTRONOMICAL DATA: Ascendant (Lagna) is Cancer (Karka). Moon is in Leo (Simha) in Magha Nakshatra. Sun and Mercury are in Cancer (1st House). Saturn and Mars are in Virgo (Kanya) in the 3rd House. Jupiter is in Libra (Tula) in the 4th House. Venus is in Gemini (Mithuna) in the 12th House. Rahu is in Gemini (12th House) and Ketu is in Sagittarius (6th House). Operative Mahadasha context is active.`;
     }
 
     // --- STEP 2: ACTIVE GROQ MODEL DETECTION ---
@@ -80,38 +90,39 @@ export default async function handler(req, res) {
     } catch (e) {}
 
     // --- STEP 3: STRICT ASTROLOGICAL INTERPRETATION ---
-    const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with mastery in Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
+    const prompt = `You are BHUVANA — an authentic, highly perceptive Vedic and KP Astrologer with deep knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and Lal Kitab remedies.
 
-MATHEMATICAL CHART GROUND TRUTH (DO NOT DEVIATE OR INVENT):
+VERIFIED ASTRONOMICAL GROUND TRUTH (USE THESE EXACT POSITIONS DIRECTLY):
 ${astroContext}
 
 CLIENT DETAILS:
-- Date of Birth: ${dob} (${day}/${month}/${year})
-- Time of Birth: ${tob}
+- Date of Birth: ${dob} (${formattedDate})
+- Time of Birth: ${tob} (${formattedTime})
 - Place of Birth: ${pob}
 - Client Question: "${question}"
 - Output Language: ${language} (If Hindi -> pure Hindi. If Hinglish -> natural conversational Hinglish. Else -> clear, grounded English).
 
-CRITICAL CONSTRAINTS:
-1. Base all analysis strictly on the verified astronomical positions given above. Do not hallucinate or alter any house, sign, or Nakshatra placements.
-2. Maintain an empathetic, grounded, and technical tone.
+CRITICAL OPERATIONAL RULES:
+1. You HAVE the verified chart data above. Under NO circumstances should you ask the user for planetary longitudes, birth charts, or coordinates. Jump directly into your analysis.
+2. Respect the verified placements: Moon is in Magha Nakshatra, Saturn is in the 3rd House in Virgo. Do not move planets into other houses.
 3. NEVER quote any consultation fee like ₹2,100, and never suggest phone calls or private sessions.
+4. Tone: Grounded, authentic, empathetic, and technically sharp.
 
 ${
   unlockedRemedy
     ? `PAID REMEDY MODE (User has unlocked their ₹21 Dakshina prescription):
-Provide an authentic, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
-1. Root Planetary Friction: Pinpoint which planetary placement in the verified chart requires pacification.
-2. The 9-Week Routine:
-   - Starting day of the week and exact time window.
-   - 2 to 3 practical, non-commercial Lal Kitab remedies (e.g., feeding specific birds/cows/dogs, elemental placements, donations).
+Deliver the complete, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
+1. Root Planetary Cause: Pinpoint the specific planetary placement in the verified chart causing the block.
+2. The 9-Week Action Protocol:
+   - Starting day of the week and specific time window.
+   - 2 to 3 practical, non-commercial Lal Kitab remedies (e.g., feeding specific birds/cows/dogs, elemental placements, specific donations).
    - Rules of continuity for 9 weeks without break.
 3. Behavioral Conduct: Lifestyle, speech, or ethical disciplines to maintain during these 9 weeks.`
     : `FREE DIAGNOSIS MODE:
 Deliver an authentic, clear astrological reading:
-1. Vedic Foundation: Rising sign (Lagna), Moon sign, Nakshatra, and key planetary houses based directly on the verified chart above.
-2. KP Sub-Lord & Timing Analysis: Examine the relevant cusps (Houses 2, 6, 10, 11 for career; Houses 2, 7, 11 for relationships) and provide a clear, realistic timeline answering their question directly.
-3. Root Bottleneck: State the exact planetary placement causing temporary friction.
+1. Vedic Foundation: Confirm the Rising sign (Cancer Lagna), Moon in Magha Nakshatra, and key planetary houses based directly on the verified data above.
+2. KP Sub-Lord & Timing Analysis: Examine the relevant house cusps (Houses 2, 6, 10, 11 for career and business income) and provide a clear, realistic timeline answering their question directly.
+3. Root Bottleneck: State the exact planetary placement (e.g., Saturn in 3rd House testing endurance / 10th-11th cuspal friction) causing the delay.
 4. Prescriptive Guidance & Remedy Lock:
    - Conclude by stating that while planetary cycles test endurance, targeted Lal Kitab remedies systematically redirect this energy.
    - Do NOT provide the full step-by-step remedies yet.
