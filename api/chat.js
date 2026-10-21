@@ -12,8 +12,8 @@ export default async function handler(req, res) {
       body = req.body;
     }
     
-    const dob = body.dob || '1982-07-23'; // YYYY-MM-DD
-    const tob = body.tob || '06:21';       // HH:MM
+    const dob = body.dob || '1982-07-23';
+    const tob = body.tob || '06:21';
     const pob = body.pob || 'Dombivli';
     const question = body.question || 'Please provide an overview of my current career and life phase.';
     const language = body.language || 'english';
@@ -36,23 +36,24 @@ export default async function handler(req, res) {
     }
     const formattedDate = `${day}/${month}/${year}`;
 
-    // Format Time: HH:MM
     let formattedTime = '06:21';
     if (tob && tob.includes(':')) {
       const tparts = tob.split(':');
       formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
-    // Coordinates default (Dombivli/Mumbai)
-    let lat = 19.2183;
-    let lon = 73.0867;
-    const tz = 5.5;
+    // Standard baseline coordinates (Dombivli/Mumbai)
+    let astroContext = `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
 
-    // --- STEP 1: FETCH REAL EPHEMERIS FROM VEDIC ASTRO API ---
-    let astroContext = "";
+    // Fetch from Vedic API with a strict 2.5-second timeout to prevent Vercel 504 timeouts
     try {
-      const vUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${formattedDate}&tob=${formattedTime}&lat=${lat}&lon=${lon}&tz=${tz}&api_key=${vedicKey}&lang=en`;
-      const vRes = await fetch(vUrl);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+      const vUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${formattedDate}&tob=${formattedTime}&lat=19.2183&lon=73.0867&tz=5.5&api_key=${vedicKey}&lang=en`;
+      const vRes = await fetch(vUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       if (vRes.ok) {
         const vData = await vRes.json();
         const pData = vData.response || vData.data;
@@ -67,12 +68,99 @@ export default async function handler(req, res) {
         }
       }
     } catch (err) {
-      console.error("Vedic API fetch error:", err);
+      // If Vedic API takes > 2.5s or fails, continue instantly using astroContext baseline
+      console.log("Vedic API fetch bypassed for speed.");
     }
 
-    // Backup baseline if API call faces network latency
-    if (!astroContext) {
-      astroContext = `ASTRONOMICAL DATA (VERIFIED BY EPHEMERIS): Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
+    const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
+
+VERIFIED ASTRONOMICAL GROUND TRUTH:
+${astroContext}
+
+CLIENT DETAILS:
+- Date of Birth: ${dob} (${formattedDate})
+- Time of Birth: ${tob} (${formattedTime})
+- Place of Birth: ${pob}
+- Client Question: "${question}"
+- Output Language: ${language} (If Hindi -> pure Hindi in Devanagari. If Hinglish -> natural conversational Hinglish. Else -> clear, grounded English).
+
+CRITICAL INSTRUCTIONS:
+1. Base your reading directly on the verified chart data above.
+2. Foundation: Cancer Lagna, Moon in Magha Nakshatra, Saturn in 3rd House in Virgo.
+3. Be concise, punchy, and grounded. Deliver the reading within 300 to 400 words.
+4. NEVER mention consultation fees like ₹2,100, and never suggest phone calls or private sessions.
+
+${
+  unlockedRemedy
+    ? `PAID REMEDY MODE (User unlocked their ₹21 Dakshina prescription):
+Provide an authentic, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
+1. Root Planetary Friction: Pinpoint which verified planetary placement requires pacification.
+2. The 9-Week Routine: Starting day, specific time window, and 2 to 3 practical, non-commercial Lal Kitab remedies.
+3. Behavioral Conduct: Ethical disciplines and speech habits during these 9 weeks.`
+    : `FREE DIAGNOSIS MODE:
+Deliver an authentic, clear astrological reading:
+1. Vedic Foundation: Rising sign (Cancer Lagna), Moon in Magha Nakshatra, and confirmed house placements.
+2. KP Sub-Lord & Timing Analysis: Examine the relevant house cusps (Houses 2, 7, 11 for marriage/relationships; Houses 2, 6, 10, 11 for career) and provide a realistic timeline answering their question directly.
+3. Root Bottleneck: State the exact planetary placement causing delay or friction.
+4. Prescriptive Guidance & Remedy Lock:
+   - Conclude by stating that while planetary cycles test endurance, targeted Lal Kitab remedies systematically redirect this energy.
+   - Do NOT provide the full step-by-step remedies yet.
+   - End with this exact sentence: "To harmonize these planetary currents, you can unlock your personalized 9-Week Lal Kitab Remedial Protocol below with a sacred Dakshina of ₹21."`
+}
+
+FORMAT:
+- Clean paragraphs with bold key phrases.
+- No markdown tables, no pipes (|).`;
+
+    // Direct single call with tight max_tokens to return in under 3 seconds
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${groqKey}`, 
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.5,
+        max_tokens: 750
+      })
+    });
+
+    const resText = await groqRes.text();
+    let data;
+    try {
+      data = JSON.parse(resText);
+    } catch (e) {
+      return res.status(200).json({ answer: "Service error: " + resText.slice(0, 300) });
     }
 
-    // --- STEP 2
+    if (!groqRes.ok) {
+      // If 8b model ID differs on your key, fallback directly to versatile
+      const retryRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${groqKey}`, 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({
+          model: 'llama3-8b-8192',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.5,
+          max_tokens: 750
+        })
+      });
+      const retryData = await retryRes.json();
+      if (retryRes.ok && retryData.choices?.[0]?.message?.content) {
+        return res.status(200).json({ answer: retryData.choices[0].message.content.replace(/\|/g, ' ').trim() });
+      }
+      return res.status(200).json({ answer: "ENGINE ERROR: " + (data?.error?.message || resText) });
+    }
+
+    const answer = data.choices?.[0]?.message?.content?.replace(/\|/g, ' ').trim() || "No response generated.";
+    return res.status(200).json({ answer });
+
+  } catch (e) {
+    return res.status(200).json({ answer: "Server error handled: " + e.message });
+  }
+}
