@@ -21,6 +21,28 @@ export default async function handler(req, res) {
       });
     }
 
+    // 1. Fetch live available active models directly from Groq for your key
+    let activeModel = 'llama-3.3-70b-versatile';
+    try {
+      const modelsListRes = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${apiKey}` }
+      });
+      if (modelsListRes.ok) {
+        const modelsData = await modelsListRes.json();
+        // Pick an active text chat model from your account's live list
+        const textModels = (modelsData.data || [])
+          .map(m => m.id)
+          .filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('vision'));
+
+        if (textModels.length > 0) {
+          // Prefer 70b or 8b or the first active chat model
+          activeModel = textModels.find(m => m.includes('70b')) || textModels.find(m => m.includes('8b')) || textModels[0];
+        }
+      }
+    } catch (e) {
+      // Fallback if list endpoint fails
+    }
+
     const prompt = `You are BHUVANA — a deeply authentic, compassionate, and precise Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and Lal Kitab remedies. Speak with natural warmth, authority, and empathy. Never speak like a machine or a generic horoscope app.
 
 CLIENT DETAILS:
@@ -60,50 +82,30 @@ FORMAT RULES:
 - Do NOT use markdown tables or pipe (|) characters.
 - Keep the guidance empathetic, practical, and deeply authentic.`;
 
-    // Candidate models to ensure guaranteed execution on any Groq tier
-    const modelsToTry = [
-      'llama-3.1-70b-versatile',
-      'mixtral-8x7b-32768',
-      'gemma2-9b-it'
-    ];
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${apiKey}`, 
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify({
+        model: activeModel,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.65,
+        max_tokens: 2200
+      })
+    });
 
-    let lastError = null;
-    let answer = null;
+    const data = await groqRes.json();
 
-    for (const model of modelsToTry) {
-      try {
-        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${apiKey}`, 
-            'Content-Type': 'application/json' 
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.65,
-            max_tokens: 2200
-          })
-        });
-
-        const data = await groqRes.json();
-
-        if (groqRes.ok && data.choices?.[0]?.message?.content) {
-          answer = data.choices[0].message.content.replace(/\|/g, ' ').trim();
-          break; // Successfully got answer, exit loop
-        } else {
-          lastError = data.error?.message || JSON.stringify(data);
-        }
-      } catch (err) {
-        lastError = err.message;
-      }
-    }
-
-    if (!answer) {
+    if (!groqRes.ok) {
       return res.status(200).json({ 
-        answer: "Engine Error: " + (lastError || "Could not complete reading at this time.") 
+        answer: "GROQ ERROR: " + (data.error?.message || JSON.stringify(data).slice(0, 800)) 
       });
     }
+
+    let answer = data.choices?.[0]?.message?.content || "No answer generated";
+    answer = answer.replace(/\|/g, ' ').trim();
 
     return res.status(200).json({ answer });
 
