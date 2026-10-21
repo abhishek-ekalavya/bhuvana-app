@@ -26,7 +26,6 @@ export default async function handler(req, res) {
     if (isNaN(hour) || isNaN(minute)) { hour = 6; minute = 21; }
 
     // --- STEP 2: UNIVERSAL FREE GEOCODING (OpenStreetMap Nominatim) ---
-    // Default fallback to Dombivli/Mumbai coordinates
     let lat = 19.2183;
     let lon = 73.0867;
     let resolvedPlace = pob;
@@ -48,10 +47,10 @@ export default async function handler(req, res) {
       console.error("Geocoding fetch fallback:", geoErr);
     }
 
-    const tz = 5.5; // Standard Indian Time Zone offset
+    const tz = 5.5; // Indian Standard Time
 
     // --- STEP 3: SELF-HOSTED ASTRONOMICAL CALCULATION ENGINE ---
-    // 1. Julian Day Calculation
+    // Julian Day Calculation
     const decimalUT = (hour + minute / 60.0) - tz;
     let Y = year;
     let M = month;
@@ -62,16 +61,16 @@ export default async function handler(req, res) {
     const JD = Math.floor(365.25 * (Y + 4716)) + Math.floor(30.6001 * (M + 1)) + D + B - 1524.5;
     const T = (JD - 2451545.0) / 36525.0;
 
-    // 2. Lahiri Ayanamsha (Chitra Paksha)
+    // Lahiri Ayanamsha (Chitra Paksha)
     const ayanamsha = 23.85 + (T * 1.396);
 
-    // 3. Greenwich & Local Sidereal Time
+    // Greenwich & Local Sidereal Time
     let GMST0 = 100.46061837 + (36000.770053608 * T) + (0.000387933 * T * T) - ((T * T * T) / 38710000.0);
     GMST0 = ((GMST0 % 360) + 360) % 360;
     const gmst = (GMST0 + (360.985647366 * (decimalUT / 24.0))) % 360;
-    const ramc = (gmst + lon) % 360; // Local Sidereal Time in degrees
+    const ramc = (gmst + lon) % 360;
 
-    // 4. True Ascendant (Lagna)
+    // True Ascendant (Lagna)
     const eps = (23.439291 - 0.0130042 * T) * (Math.PI / 180);
     const ramcRad = ramc * (Math.PI / 180);
     const phiRad = lat * (Math.PI / 180);
@@ -79,7 +78,7 @@ export default async function handler(req, res) {
     lagnaTrop = (lagnaTrop * (180 / Math.PI) + 360) % 360;
     const lagnaSidereal = ((lagnaTrop - ayanamsha) + 360) % 360;
 
-    // 5. Mean Moon Longitude & Nakshatra
+    // Moon Longitude & Nakshatra
     let L0_moon = 218.3164477 + 481267.88123421 * T;
     let moonSidereal = ((L0_moon - ayanamsha) % 360 + 360) % 360;
 
@@ -114,24 +113,7 @@ export default async function handler(req, res) {
 - Ketu: Sagittarius (Dhanu) in 6th House
 - Calculation Standard: Lahiri Ayanamsha (${ayanamsha.toFixed(2)}°), Placidus Cuspal Distribution`;
 
-    // --- STEP 4: ACTIVE GROQ MODEL DETECTION ---
-    let activeModel = 'llama-3.3-70b-versatile';
-    try {
-      const mRes = await fetch('https://api.groq.com/openai/v1/models', {
-        headers: { 'Authorization': `Bearer ${groqKey}` }
-      });
-      if (mRes.ok) {
-        const mData = await mRes.json();
-        const textModels = (mData.data || [])
-          .map(m => m.id)
-          .filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('vision'));
-        if (textModels.length > 0) {
-          activeModel = textModels.find(m => m.includes('70b')) || textModels.find(m => m.includes('8b')) || textModels[0];
-        }
-      }
-    } catch (e) {}
-
-    // --- STEP 5: INTERPRETATION ENGINE ---
+    // --- STEP 4: INTERPRETATION ENGINE ---
     const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
 
 MATHEMATICAL CHART GROUND TRUTH (CALCULATED VIA INTERNAL EPHEMERIS):
@@ -174,30 +156,42 @@ FORMAT:
 - Clean paragraphs with bold key phrases.
 - No markdown tables, no pipes (|).`;
 
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${groqKey}`, 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({
-        model: activeModel,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.5,
-        max_tokens: 2200
-      })
-    });
+    // Production Groq models with reliable fallback
+    const targetModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+    let groqRes = null;
+    let data = null;
 
-    const data = await groqRes.json();
-    if (!groqRes.ok) {
+    for (const modelName of targetModels) {
+      try {
+        groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${groqKey}`, 
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.5,
+            max_tokens: 2200
+          })
+        });
+        data = await groqRes.json();
+        if (groqRes.ok && data.choices?.[0]?.message?.content) {
+          break; // Success
+        }
+      } catch (err) {
+        console.error("Model fallback:", err);
+      }
+    }
+
+    if (!data || !groqRes || !groqRes.ok) {
       return res.status(200).json({ 
-        answer: "ENGINE ERROR: " + (data.error?.message || JSON.stringify(data).slice(0, 800)) 
+        answer: "ENGINE ERROR: " + (data?.error?.message || "Failed to reach AI service. Please try again.") 
       });
     }
 
-    let answer = data.choices?.[0]?.message?.content || "No answer generated";
-    answer = answer.replace(/\|/g, ' ').trim();
-
+    let answer = data.choices[0].message.content.replace(/\|/g, ' ').trim();
     return res.status(200).json({ answer });
 
   } catch (e) {
