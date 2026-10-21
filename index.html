@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BHUVANA - The Truth Behind Your Chart</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui}
+body{background:#FFF8F0}
+.cream{min-height:100vh;padding:20px 16px;text-align:center;background:#FFF8F0}
+.logo-wheel{width:160px;height:160px;border-radius:50%;margin:18px auto;display:block;background:radial-gradient(#D97C2B,#3A2410)}
+.orange-btn{background:#D97C2B;color:white;padding:16px 28px;border-radius:30px;border:none;width:100%;max-width:420px;font-weight:800;font-size:17px;margin:20px auto;display:block}
+input{width:100%;max-width:420px;padding:14px;border-radius:14px;border:1.5px solid #E5D5C0;margin:8px auto;display:block;background:white}
+label{max-width:420px;margin:14px auto 4px;display:block;text-align:left;color:#6B5A45;font-weight:600;font-size:13px}
+.gender-row{display:flex;gap:10px;max-width:420px;margin:8px auto}
+.gender-row button{flex:1;padding:12px;border-radius:12px;border:1.5px solid #E5D5C0;background:white}
+.gender-row button.active{background:#D97C2B;color:white}
+.card{background:white;border-radius:18px;padding:16px;max-width:480px;margin:16px auto;text-align:left}
+.vedic-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border:1px solid #EADDCB;border-radius:12px;overflow:hidden;margin:12px 0}
+.vedic-grid div{border:0.5px solid #EADDCB;padding:10px 6px;font-size:12px;min-height:48px}
+.whatsapp-btn{background:#22C55E;color:white;padding:16px;border-radius:30px;border:none;width:100%;max-width:480px;font-weight:800;font-size:16px;margin:20px auto;display:block}
+table{width:100%;border-collapse:collapse;font-size:13px} th{color:#8B7355;text-align:left;padding:8px;border-bottom:1px solid #EADDCB} td{padding:8px;border-bottom:1px solid #F5EDE2}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState}=React;
+function Login({onLogin}){return(<div className="cream"><div className="logo-wheel"></div><h1>BHUVANA</h1><p>The Truth Behind Your Chart</p><input placeholder="Email"/><input placeholder="Password" type="password"/><button className="orange-btn" onClick={onLogin}>LOGIN</button></div>)}
+function InputPage({onGenerate}){const[d,setD]=useState({name:'',dob:'',tob:'',place:'Delhi, India',gender:'Male'});return(<div className="cream"><h2 style={{textAlign:'left',maxWidth:420,margin:'10px auto'}}>Enter Birth Details</h2><label>Full Name</label><input value={d.name} onChange={e=>setD({...d,name:e.target.value})}/><label>Date of Birth</label><input type="date" value={d.dob} onChange={e=>setD({...d,dob:e.target.value})}/><label>Time of Birth</label><input type="time" value={d.tob} onChange={e=>setD({...d,tob:e.target.value})}/><label>Place</label><input value={d.place} onChange={e=>setD({...d,place:e.target.value})}/><label>Gender</label><div className="gender-row"><button className={d.gender==='Male'?'active':''} onClick={()=>setD({...d,gender:'Male'})}>Male</button><button className={d.gender==='Female'?'active':''} onClick={()=>setD({...d,gender:'Female'})}>Female</button><button className={d.gender==='Other'?'active':''} onClick={()=>setD({...d,gender:'Other'})}>Other</button></div><button className="orange-btn" onClick={()=>onGenerate(d)}>Generate My BHUVANA Chart</button></div>)}
+function ResultPage({birthData}){const share=()=>{const t=`My BHUVANA Chart - DOB: ${birthData.dob} ${birthData.tob} ${birthData.place} - bhuvana.app`;window.open(`https://wa.me/?text=${encodeURIComponent(t)}`,'_blank')};return(<div className="cream"><h3>BHUVANA - Chart Result</h3><div className="card"><h3>☆ NORTH INDIAN VEDIC CHART</h3><div className="vedic-grid"><div>Ma Mo</div><div>Ju</div><div>Su Lagna</div><div>Me</div><div>Ke</div><div style={{gridColumn:'span 2',background:'#FFF8F0',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700}}>BHUVANA</div><div>Ve</div><div>Sa</div><div>Ra</div><div></div><div></div></div><p style={{fontSize:12}}>Ascendant: Leo • {birthData.dob} {birthData.tob} {birthData.place}</p><h3 style={{marginTop:12}}>KP - SUB-LORD TABLE</h3><table><tr><th>PLANET</th><th>SIGN/STAR</th><th>SUB</th></tr><tr><td>Sun</td><td>Leo Magha</td><td>Ketu</td></tr><tr><td>Moon</td><td>Cancer Ashlesha</td><td>Mercury</td></tr><tr><td>Mars</td><td>Gemini Mrigashira</td><td>Rahu</td></tr></table></div><button className="whatsapp-btn" onClick={share}>Share on WhatsApp</button></div>)}
+function App(){const[step,setStep]=useState('login');const[bd,setBd]=useState({});return(<>{step==='login'&&<Login onLogin={()=>setStep('input')}/>} {step==='input'&&<InputPage onGenerate={d=>{setBd(d);setStep('result')}}/>} {step==='result'&&<ResultPage birthData={bd}/>}</>)}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
