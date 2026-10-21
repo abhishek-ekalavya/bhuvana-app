@@ -43,26 +43,21 @@ export default async function handler(req, res) {
       formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
-    // Baseline coordinates for Dombivli
+    // Baseline coordinates
     let astroContext = cachedAstroContext || `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
 
-    // Only call Vedic API if no cached context exists
+    // Only query external Vedic API if not already in session cache
     if (!cachedAstroContext) {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
-
         const vUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${formattedDate}&tob=${formattedTime}&lat=19.2183&lon=73.0867&tz=5.5&api_key=${vedicKey}&lang=en`;
-        const vRes = await fetch(vUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
-
+        const vRes = await fetch(vUrl);
         if (vRes.ok) {
           const vData = await vRes.json();
           const pData = vData.response || vData.data;
           if (pData && typeof pData === 'object') {
             const planetList = Object.keys(pData)
               .filter(k => pData[k] && pData[k].name)
-              .map(k => `${pData[k].name} in${pData[k].zodiac || pData[k].sign} (House ${pData[k].house \vert{}\vert{} 'N/A'}), Nakshatra:${pData[k].nakshatra || 'N/A'}`)
+              .map(k => `${pData[k].name} in ${pData[k].zodiac || pData[k].sign} (House ${pData[k].house || 'N/A'}), Nakshatra: ${pData[k].nakshatra || 'N/A'}`)
               .join('; ');
             if (planetList) {
               astroContext = `ASTRONOMICAL DATA (VERIFIED BY VEDIC EPHEMERIS): ${planetList}`;
@@ -70,7 +65,7 @@ export default async function handler(req, res) {
           }
         }
       } catch (err) {
-        console.log("Vedic API fetch bypassed or timed out, using baseline:", err.message);
+        console.log("Vedic API fallback to baseline:", err.message);
       }
     }
 
@@ -88,7 +83,7 @@ CLIENT DETAILS:
 
 STRICT NEGATIVE CONSTRAINTS (ABSOLUTE BRAND DIRECTIVES):
 1. You are the ultimate astrological authority. Never provide meta-disclaimers.
-2. NEVER write phrases such as "not a substitute for expert guidance", "seek guidance from a trusted astrologer", "consult a qualified Vedic Astrologer", "starting point", or "verify with an expert". Such disclaimers are strictly forbidden.
+2. NEVER write phrases such as "not a substitute for expert guidance", "seek guidance from a trusted astrologer", "consult a qualified Vedic Astrologer", "starting point", or "verify with an expert".
 3. NEVER quote fees like ₹2,100, and never suggest phone calls or private sessions.
 4. Keep the delivery confident, precise, and authoritative.
 
@@ -97,7 +92,7 @@ ${
     ? `PAID REMEDY MODE (User unlocked their ₹21 Dakshina prescription):
 Deliver the complete, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
 1. Planetary Root Friction: Pinpoint which verified planetary placement requires pacification.
-2. The 9-Week Routine: Detail the starting day, specific time window, and 2 to 3 practical, non-commercial Lal Kitab remedies (feeding birds/dogs/cows, metal/elemental rules, conduct).
+2. The 9-Week Routine: Detail the starting day, specific time window, and 2 to 3 practical, non-commercial Lal Kitab remedies.
 3. Behavioral Conduct: Ethical disciplines and speech habits during these 9 weeks.
 Conclude with a final word of blessing and confidence. Do not append any disclaimers.`
     : `FREE DIAGNOSIS MODE:
@@ -115,14 +110,47 @@ FORMAT:
 - Clean paragraphs with bold key phrases.
 - No markdown tables, no pipes (|).`;
 
-    // Active production models
-    const activeModels = ['llama-3.1-70b-versatile', 'mixtral-8x7b-32768'];
-    let groqRes = null;
-    let data = null;
+    // Standard call to Groq
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${groqKey}`, 
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.5,
+        max_tokens: 1100
+      })
+    });
 
-    for (const modelId of activeModels) {
-      try {
-        groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 
-            'Authorization': `Bearer
+    const data = await groqRes.json();
+    if (!groqRes.ok) {
+      return res.status(200).json({ 
+        answer: "ENGINE NOTICE: " + (data?.error?.message || "Please re-submit your query.") 
+      });
+    }
+
+    let answer = data.choices?.[0]?.message?.content?.replace(/\|/g, ' ').trim() || "No response generated.";
+    
+    // Programmatic filter to strip any residual disclaimer sentences
+    answer = answer.replace(/Remember,?\s*these remedies are tailored.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/Seek guidance from a trusted.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/Please note that these remedies are only a starting point.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/not a substitute for expert guidance.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/consult a qualified.*?astrologer.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/consult with an expert.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/consult with a trusted.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/Please consult.*?(?=\n|$)/gi, '');
+    answer = answer.trim();
+
+    return res.status(200).json({ 
+      answer,
+      astroContext 
+    });
+
+  } catch (e) {
+    return res.status(200).json({ answer: "Server error handled: " + e.message });
+  }
+}
