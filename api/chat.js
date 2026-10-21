@@ -7,7 +7,6 @@ export default async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     
-    // Capture user inputs from the front-end form
     const dob = body.dob || 'Not provided';
     const tob = body.tob || 'Not provided';
     const pob = body.pob || 'Not provided';
@@ -22,7 +21,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Dynamic prompt combining Vedic, KP, and Lal Kitab logic
     const prompt = `You are BHUVANA — a deeply authentic, compassionate, and precise Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and Lal Kitab remedies. Speak with natural warmth, authority, and empathy. Never speak like a machine or a generic horoscope app.
 
 CLIENT DETAILS:
@@ -62,30 +60,50 @@ FORMAT RULES:
 - Do NOT use markdown tables or pipe (|) characters.
 - Keep the guidance empathetic, practical, and deeply authentic.`;
 
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${apiKey}`, 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.65,
-        max_tokens: 2200
-      })
-    });
+    // Candidate models to ensure guaranteed execution on any Groq tier
+    const modelsToTry = [
+      'llama-3.1-70b-versatile',
+      'mixtral-8x7b-32768',
+      'gemma2-9b-it'
+    ];
 
-    const data = await groqRes.json();
+    let lastError = null;
+    let answer = null;
 
-    if (!groqRes.ok) {
-      return res.status(200).json({ 
-        answer: "GROQ ERROR: " + (data.error?.message || JSON.stringify(data).slice(0, 800)) 
-      });
+    for (const model of modelsToTry) {
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${apiKey}`, 
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.65,
+            max_tokens: 2200
+          })
+        });
+
+        const data = await groqRes.json();
+
+        if (groqRes.ok && data.choices?.[0]?.message?.content) {
+          answer = data.choices[0].message.content.replace(/\|/g, ' ').trim();
+          break; // Successfully got answer, exit loop
+        } else {
+          lastError = data.error?.message || JSON.stringify(data);
+        }
+      } catch (err) {
+        lastError = err.message;
+      }
     }
 
-    let answer = data.choices?.[0]?.message?.content || "No answer generated";
-    answer = answer.replace(/\|/g, ' ').trim();
+    if (!answer) {
+      return res.status(200).json({ 
+        answer: "Engine Error: " + (lastError || "Could not complete reading at this time.") 
+      });
+    }
 
     return res.status(200).json({ answer });
 
