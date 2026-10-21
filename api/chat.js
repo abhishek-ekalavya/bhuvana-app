@@ -8,54 +8,69 @@ export default async function handler(req, res) {
   const { question, chartContext } = req.body;
   const apiKey = process.env.GROQ_API_KEY;
 
-  // If no key, return DETAILED fallback (not vague)
+  // Detailed fallback if key missing
   if (!apiKey) {
-    const q = question.toLowerCase();
-    let detailed = "";
-    if (q.includes('money') || q.includes('firm') || q.includes('business')) {
-      detailed = `Prashna: "${question}"\n\nYour Chart: Leo Lagna (Sun own house) = Natural Leader, King energy. 2nd Lord Mercury in Leo = Money through own communication/brand. 11th Lord Mercury also = Gains from network.\n\nSaturn exalted in Libra in 3rd house Vishakha: 3rd is own effort, startup, courage. Exalted Saturn = Slow start but permanent empire. Shani says "mehnat se safalta".\n\nTimeline: Saturn Dasha/transit? You are in Saturn's hard work period. For new firm, money flow starts after Sun transits 11th (June-July) + Mars in 10th gives push. Next 3-6 months: Focus on 3rd house efforts, partnerships (7th Jupiter aspect).\n\nRemedy: Shani - Light mustard oil diya Saturday evening + Hanuman Chalisa. Surya arghya daily for Leo Lagna power. Rahu in 6th = Win over competitors by daily routine.\n\nAction: Don't expect windfall, expect steady client base building till Diwali. 2nd year = Jupiter will give expansion.`;
-    } else {
-      detailed = `Prashna: "${question}"\n\nLeo Lagna chart: Sun in own house = Leadership yoga. Moon nakshatra? Your mind strong. Saturn exalted 3rd = Self-made. Jupiter in Libra Vishakha = Partnership luck after effort. 10th house Taurus (Venus) = Career in luxury, beauty, finance, creative.\n\nSpecific: Ask again with "money" or "career" or "marriage" - I will give house-wise breakdown.\n\nRemedy: Surya Namaskar + Aditya Hridaya Stotram for Leo power.`;
-    }
-    return res.status(200).json({ answer: detailed + "\n\n[System: GROQ_API_KEY missing - add in Vercel Settings]", source: "detailed-fallback" });
+    return res.status(200).json({ 
+      answer: `Prashna: "${question}"
+
+Your Chart: Leo Lagna, Sun own house = King + Leader. 2nd house money lord Mercury in Leo with Venus = money from brand, personal influence.
+3rd house exalted Saturn in Libra Vishakha = Own firm is correct, but Shani demands 6 months mehnat. 11th lord Mercury = Gains after network building.
+Timeline: Sun mahadasha? For new firm, first serious money inflow: 45-75 days from now (Mars supports 10th). Big profit: Around Diwali 2025 (Nov) when Jupiter aspects 11th.
+7th house Jupiter = Partnership will bring clients.
+Upay: 1) Daily Surya arghya with copper lota at sunrise (Leo Lagna must). 2) Saturday mustard oil diya to Shani under Peepal. 3) Rahu in 6th Aquarius = Donate blue blanket to worker.
+
+[NOTE: Add GROQ_API_KEY in Vercel to get live AI]`,
+      source: "fallback-no-key" 
+    });
   }
 
-  // REAL GROQ CALL - with highly specific prompt
   try {
-    const systemPrompt = `You are BHUVANA - India's most precise Vedic + KP + Lal Kitab astrologer. You NEVER give vague answers like "good time coming". You MUST give:
+    const systemPrompt = `You are BHUVANA - Elite Vedic Astrologer. Your chart context: ${chartContext}
 
-1. House analysis from given chart context: ${chartContext}
-2. Dasha/Transit logic
-3. Exact timeline in months
-4. 1 Lal Kitab remedy + 1 Mantra
-5. One actionable business/career advice
+Birth Details: Leo Lagna. Sun in own house, Mercury Leo Purva Phalguni, Venus Leo, Jupiter Libra Vishakha, Saturn Libra Vishakha EXALTED in 3rd, Mars Gemini, Moon details hidden, Rahu Aquarius, Ketu Leo.
 
-Chart is Leo Lagna. Saturn exalted 3rd Libra, Jupiter Libra, Mercury Leo, Venus Leo, Mars Gemini, Rahu Aquarius, Ketu Leo.
+TASK: User asks: "${question}"
 
-User language: Respond in mix Hindi-English like real pandit: "Surya apka lagna mein..."
-
-Rules: Be specific, bold, non-vague. No disclaimer "consult astrologer". You ARE the astrologer. Give dates. If question about money from new firm, say: 2nd house, 11th house, 3rd house effort, 7th partnership, Saturn delay logic.
-
-Keep under 180 words. Use emojis sparingly.`;
+You MUST answer:
+- Do NOT be vague. Give specific months, specific houses (2nd wealth, 11th gains, 3rd effort, 10th karma, 7th partnership)
+- For money from new firm: Explain 2nd lord, 11th lord, 3rd exalted Saturn = delayed but permanent, Jupiter in 7th = client growth. Give timeline like "Sep-Oct 2025 first stable income, Nov 2025 big project"
+- Give 2 remedies: One Lal Kitab, One Mantra. One business action.
+- Tone: Hindi-English mix, like real Pandit from Varanasi, confident.
+- Limit: 170 words max. No disclaimers.`;
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: question }],
-        temperature: 0.7,
-        max_tokens: 600
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: question }
+        ],
+        temperature: 0.75,
+        max_tokens: 700
       })
     });
 
     const data = await groqRes.json();
-    if (!groqRes.ok) throw new Error(JSON.stringify(data));
+    
+    if (!groqRes.ok) {
+      throw new Error(JSON.stringify(data));
+    }
 
-    const answer = data.choices?.[0]?.message?.content || "No answer";
-    return res.status(200).json({ answer, source: "groq-llama3.3" });
+    const answer = data.choices?.[0]?.message?.content || "No answer from AI";
+    return res.status(200).json({ answer, source: "groq-live" });
 
   } catch (e) {
-    return res.status(200).json({ answer: `Groq Error: ${e.message}. But reading your chart: Leo Lagna Sun = Leadership. For firm money, Saturn in 3rd exalted says 6 months of consistent effort = first big profit around November 2025 after Jupiter moves. Till then build system. Remedy: Shani yantra + daily Surya arghya.`, source: "error-fallback" });
+    return res.status(200).json({ 
+      answer: `Temporary Groq issue: ${e.message}
+
+But your chart says: Leo Lagna Sun own house = Leadership confirmed. New firm money = 2nd + 11th lord Mercury in Leo = Your personal brand will bring money. 3rd exalted Saturn = You must do daily self-effort for 6 months, then empire.
+
+First income: Within 60 days. Stable profit: Nov 2025 after Jupiter transit to your 11th from Moon. Focus on partnerships (Jupiter in 7th).
+
+Remedy: Surya arghya daily + Shani oil diya Saturday.`, 
+      source: "error-fallback" 
+    });
   }
 }
