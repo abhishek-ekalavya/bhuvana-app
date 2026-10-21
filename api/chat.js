@@ -12,8 +12,8 @@ export default async function handler(req, res) {
       body = req.body;
     }
     
-    const dob = body.dob || '1982-07-23'; // YYYY-MM-DD
-    const tob = body.tob || '06:21';       // HH:MM
+    const dob = body.dob || '1982-07-23';
+    const tob = body.tob || '06:21';
     const pob = body.pob || 'Dombivli';
     const question = body.question || 'Please provide an overview of my current career and life phase.';
     const language = body.language || 'english';
@@ -41,40 +41,21 @@ export default async function handler(req, res) {
       }
     }
 
-    // --- STEP 2: HIGH-SPEED INTERNAL GEOCODING (NO EXTERNAL LATENCY/CRASH) ---
+    // --- STEP 2: HIGH-SPEED INTERNAL GEOCODING ---
     const cityDatabase = {
       'dombivli': { lat: 19.2183, lon: 73.0867, name: 'Dombivli, Maharashtra' },
       'kalyan': { lat: 19.2437, lon: 73.1355, name: 'Kalyan, Maharashtra' },
       'mumbai': { lat: 18.9220, lon: 72.8347, name: 'Mumbai, Maharashtra' },
       'thane': { lat: 19.2183, lon: 72.9781, name: 'Thane, Maharashtra' },
       'pune': { lat: 18.5204, lon: 73.8567, name: 'Pune, Maharashtra' },
-      'nagpur': { lat: 21.1458, lon: 79.0882, name: 'Nagpur, Maharashtra' },
-      'nashik': { lat: 19.9975, lon: 73.7898, name: 'Nashik, Maharashtra' },
-      'delhi': { lat: 28.6139, lon: 77.2090, name: 'Delhi, India' },
-      'new delhi': { lat: 28.6139, lon: 77.2090, name: 'New Delhi, India' },
-      'noida': { lat: 28.5355, lon: 77.3910, name: 'Noida, Uttar Pradesh' },
-      'gurugram': { lat: 28.4595, lon: 77.0266, name: 'Gurugram, Haryana' },
-      'gurgaon': { lat: 28.4595, lon: 77.0266, name: 'Gurugram, Haryana' },
-      'bengaluru': { lat: 12.9716, lon: 77.5946, name: 'Bengaluru, Karnataka' },
-      'bangalore': { lat: 12.9716, lon: 77.5946, name: 'Bengaluru, Karnataka' },
-      'kolkata': { lat: 22.5726, lon: 88.3639, name: 'Kolkata, West Bengal' },
-      'hyderabad': { lat: 17.3850, lon: 78.4867, name: 'Hyderabad, Telangana' },
-      'chennai': { lat: 13.0827, lon: 80.2707, name: 'Chennai, Tamil Nadu' },
-      'ahmedabad': { lat: 23.0225, lon: 72.5714, name: 'Ahmedabad, Gujarat' },
-      'surat': { lat: 21.1702, lon: 72.8311, name: 'Surat, Gujarat' },
-      'jaipur': { lat: 26.9124, lon: 75.7873, name: 'Jaipur, Rajasthan' },
-      'lucknow': { lat: 26.8467, lon: 80.9462, name: 'Lucknow, Uttar Pradesh' },
-      'chandigarh': { lat: 30.7333, lon: 76.7794, name: 'Chandigarh, India' },
-      'patna': { lat: 25.5941, lon: 85.1376, name: 'Patna, Bihar' },
-      'indore': { lat: 22.7196, lon: 75.8577, name: 'Indore, Madhya Pradesh' },
-      'bhopal': { lat: 23.2599, lon: 77.4126, name: 'Bhopal, Madhya Pradesh' }
+      'delhi': { lat: 28.6139, lon: 77.2090, name: 'Delhi, India' }
     };
 
     const cleanInput = pob.trim().toLowerCase().split(/[\s,]+/)[0];
     const geo = cityDatabase[cleanInput] || { lat: 19.2183, lon: 73.0867, name: pob };
-    const tz = 5.5; // Indian Standard Time offset
+    const tz = 5.5;
 
-    // --- STEP 3: SELF-CONTAINED ASTRONOMICAL ENGINE ---
+    // --- STEP 3: ASTRONOMICAL ENGINE ---
     const decimalUT = (hour + minute / 60.0) - tz;
     let Y = year;
     let M = month;
@@ -85,10 +66,8 @@ export default async function handler(req, res) {
     const JD = Math.floor(365.25 * (Y + 4716)) + Math.floor(30.6001 * (M + 1)) + D + B - 1524.5;
     const T = (JD - 2451545.0) / 36525.0;
 
-    // Lahiri Ayanamsha calculation
     const ayanamsha = 23.85 + (T * 1.396);
 
-    // Sidereal Time and Ascendant (Lagna)
     let GMST0 = 100.46061837 + (36000.770053608 * T) + (0.000387933 * T * T) - ((T * T * T) / 38710000.0);
     GMST0 = ((GMST0 % 360) + 360) % 360;
     const gmst = (GMST0 + (360.985647366 * (decimalUT / 24.0))) % 360;
@@ -101,7 +80,6 @@ export default async function handler(req, res) {
     lagnaTrop = (lagnaTrop * (180 / Math.PI) + 360) % 360;
     const lagnaSidereal = ((lagnaTrop - ayanamsha) + 360) % 360;
 
-    // Moon Longitude and Nakshatra
     let L0_moon = 218.3164477 + 481267.88123421 * T;
     let moonSidereal = ((L0_moon - ayanamsha) % 360 + 360) % 360;
 
@@ -136,7 +114,6 @@ export default async function handler(req, res) {
 - Ketu: Sagittarius (Dhanu) in 6th House
 - Calculation Standard: Lahiri Ayanamsha (${ayanamsha.toFixed(2)}°), Placidus Cuspal Distribution`;
 
-    // --- STEP 4: STRICT PROMPT LOGIC ---
     const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
 
 MATHEMATICAL CHART GROUND TRUTH (CALCULATED VIA INTERNAL EPHEMERIS):
@@ -179,30 +156,69 @@ FORMAT:
 - Clean paragraphs with bold key phrases.
 - No markdown tables, no pipes (|).`;
 
-    // --- STEP 5: GROQ CALL ---
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${groqKey}`, 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.5,
-        max_tokens: 2200
-      })
-    });
-
-    const data = await groqRes.json();
-    if (!groqRes.ok) {
-      return res.status(200).json({ 
-        answer: "ENGINE ERROR: " + (data?.error?.message || JSON.stringify(data).slice(0, 800)) 
+    // --- STEP 4: FETCH AVAILABLE MODELS DIRECTLY FROM YOUR GROQ ACCOUNT ---
+    let availableModels = [];
+    try {
+      const modelsRes = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${groqKey}` }
       });
+      if (modelsRes.ok) {
+        const modelsJson = await modelsRes.json();
+        availableModels = (modelsJson.data || [])
+          .map(m => m.id)
+          .filter(id => 
+            !id.includes('whisper') && 
+            !id.includes('guard') && 
+            !id.includes('vision') && 
+            !id.includes('orpheus')
+          );
+      }
+    } catch (e) {
+      console.error("Models fetch failed", e);
     }
 
-    let answer = data.choices?.[0]?.message?.content || "No answer generated";
-    answer = answer.replace(/\|/g, ' ').trim();
+    if (availableModels.length === 0) {
+      // Standard static fallback list if /models endpoint is unreachable
+      availableModels = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'mixtral-8x7b-32768'];
+    }
+
+    // Try available models sequentially until one succeeds
+    let answer = null;
+    let lastError = null;
+
+    for (const modelToTry of availableModels) {
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${groqKey}`, 
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({
+            model: modelToTry,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.5,
+            max_tokens: 2200
+          })
+        });
+
+        const data = await groqRes.json();
+        if (groqRes.ok && data.choices?.[0]?.message?.content) {
+          answer = data.choices[0].message.content.replace(/\|/g, ' ').trim();
+          break; // Successfully got response
+        } else {
+          lastError = data?.error?.message || JSON.stringify(data);
+        }
+      } catch (err) {
+        lastError = err.message;
+      }
+    }
+
+    if (!answer) {
+      return res.status(200).json({ 
+        answer: `ENGINE ERROR: Unable to complete reading. Available models on your key: [${availableModels.join(', ')}]. Last error: ${lastError}` 
+      });
+    }
 
     return res.status(200).json({ answer });
 
