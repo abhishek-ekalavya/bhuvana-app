@@ -1,55 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>BHUVANA Vedic AI</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BHUVANA - Vedic & KP Astrology</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<style>body{margin:0;font-family:system-ui;background:#FFF7E6}input,select,textarea{width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin:5px 0 12px 0;box-sizing:border-box;font-size:16px}label{font-weight:700;font-size:13px;color:#5a3e1b;text-transform:uppercase}</style>
+<style>
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #FFF7E6;
+    color: #2D2319;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #D6C2A5;
+    margin: 6px 0 14px 0;
+    box-sizing: border-box;
+    font-size: 15px;
+    background: #FFFCF7;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #8B4513;
+  }
+  label {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    color: #5a3e1b;
+    text-transform: uppercase;
+  }
+</style>
 </head>
-<body><div id="root"></div>
+<body>
+<div id="root"></div>
+
 <script type="text/babel">
 const { useState, useEffect } = React;
-function App(){
-  const [dob,setDob]=useState(localStorage.getItem('bhuvana_dob')||'1982-07-23');
-  const [tob,setTob]=useState(localStorage.getItem('bhuvana_tob')||'06:21');
-  const [pob,setPob]=useState(localStorage.getItem('bhuvana_pob')||'Mumbai, India');
-  const [lang,setLang]=useState(localStorage.getItem('bhuvana_lang')||'english');
-  const [q,setQ]=useState(localStorage.getItem('bhuvana_q')||'From COVID 2020 to 2026 why hiccups in career? When will Ekalavya Consulting get first client and massive profits?');
-  const [ans,setAns]=useState(''); const [loading,setLoading]=useState(false); const [fs,setFs]=useState(17);
-  useEffect(()=>localStorage.setItem('bhuvana_dob',dob),[dob]);
-  useEffect(()=>localStorage.setItem('bhuvana_tob',tob),[tob]);
-  useEffect(()=>localStorage.setItem('bhuvana_pob',pob),[pob]);
-  useEffect(()=>localStorage.setItem('bhuvana_lang',lang),[lang]);
-  useEffect(()=>localStorage.setItem('bhuvana_q',q),[q]);
-  async function ask(){
-    if(!dob||!tob) return alert('Enter birth');
-    setLoading(true); setAns('');
-    try{
-      const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,language:lang,birthData:{dob,tob,pob},dob,tob,pob})});
-      const d=await r.json(); setAns(d.answer);
-    }catch(e){ setAns('Error '+e.message); }
+
+function App() {
+  const [dob, setDob] = useState(localStorage.getItem('bhuvana_dob') || '');
+  const [tob, setTob] = useState(localStorage.getItem('bhuvana_tob') || '');
+  const [pob, setPob] = useState(localStorage.getItem('bhuvana_pob') || '');
+  const [lang, setLang] = useState(localStorage.getItem('bhuvana_lang') || 'english');
+  const [q, setQ] = useState(localStorage.getItem('bhuvana_q') || '');
+  
+  const [ans, setAns] = useState('');
+  const [remedyAns, setRemedyAns] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [remedyLoading, setRemedyLoading] = useState(false);
+  const [fs, setFs] = useState(16);
+
+  useEffect(() => { if (dob) localStorage.setItem('bhuvana_dob', dob); }, [dob]);
+  useEffect(() => { if (tob) localStorage.setItem('bhuvana_tob', tob); }, [tob]);
+  useEffect(() => { if (pob) localStorage.setItem('bhuvana_pob', pob); }, [pob]);
+  useEffect(() => { if (lang) localStorage.setItem('bhuvana_lang', lang); }, [lang]);
+  useEffect(() => { if (q) localStorage.setItem('bhuvana_q', q); }, [q]);
+
+  async function askReading() {
+    if (!dob || !tob || !pob) {
+      return alert('Please enter your Date, Time, and Place of Birth.');
+    }
+    if (!q) {
+      return alert('Please enter your question.');
+    }
+    setLoading(true);
+    setAns('');
+    setRemedyAns('');
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dob,
+          tob,
+          pob,
+          question: q,
+          language: lang,
+          unlockedRemedy: false
+        })
+      });
+      const data = await res.json();
+      setAns(data.answer);
+    } catch (e) {
+      setAns('Error connecting to engine: ' + e.message);
+    }
     setLoading(false);
   }
+
+  async function unlockRemedyProtocol() {
+    setRemedyLoading(true);
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dob,
+          tob,
+          pob,
+          question: q,
+          language: lang,
+          unlockedRemedy: true
+        })
+      });
+      const data = await res.json();
+      setRemedyAns(data.answer);
+    } catch (e) {
+      setRemedyAns('Error fetching remedy protocol: ' + e.message);
+    }
+    setRemedyLoading(false);
+  }
+
   return (
-    <div style={{maxWidth:"620px",margin:"0 auto",padding:"14px"}}>
-      <h1 style={{textAlign:"center",color:"#8B4513",margin:"8px 0"}}>🔮 BHUVANA - Vedic Astrologer</h1>
-      <p style={{textAlign:"center",fontSize:"11px",color:"#666"}}>Foundation: Real Lahiri Calculation • Mars Mahadasha Locked • Saved Forever</p>
-      <div style={{background:"white",padding:"16px",borderRadius:"12px",boxShadow:"0 2px 8px rgba(0,0,0,0.08)"}}>
-        <label>DOB - Will Never Reset</label><input type="date" value={dob} onChange={e=>setDob(e.target.value)} />
-        <label>TOB Exact</label><input type="time" value={tob} onChange={e=>setTob(e.target.value)} />
-        <label>POB</label><input value={pob} onChange={e=>setPob(e.target.value)} />
-        <label>Answer Language - English Only When Select English</label>
-        <select value={lang} onChange={e=>setLang(e.target.value)}><option value="english">English - Detailed Astrology</option><option value="hi">Hindi</option><option value="hinglish">Hinglish</option></select>
-        <label>Your Question</label><textarea value={q} onChange={e=>setQ(e.target.value)} rows={4} />
-        <button onClick={ask} disabled={loading} style={{width:"100%",padding:"14px",marginTop:"8px",background:"#8B4513",color:"white",border:"none",borderRadius:"10px",fontSize:"17px",fontWeight:"bold"}}>{loading?"Calculating Kundali with Real Ephemeris...":"GET AUTHENTIC READING"}</button>
-      </div>
-      {ans && <div style={{marginTop:"16px",background:"#FFFDF0",border:"2px solid #E6C200",padding:"14px",borderRadius:"12px"}}><div style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #eee",paddingBottom:"6px",marginBottom:"8px"}}><b style={{color:"#8B4513"}}>Kundali Vachan:</b><div><button onClick={()=>setFs(s=>Math.min(24,s+1))}>A+</button><button onClick={()=>setFs(s=>Math.max(13,s-1))} style={{marginLeft:"4px"}}>A-</button></div></div><div style={{whiteSpace:"pre-wrap",fontSize:fs,lineHeight:"1.7",color:"#222",fontFamily:"Georgia,serif"}}>{ans}</div></div>}
-    </div>
-  );
-}
-const root=ReactDOM.createRoot(document.getElementById('root')); root.render(<App />);
-</script>
-</body>
-</html>
+    <div style={{maxWidth: "600px", margin: "0 auto", padding: "16px 14px 40px 14px"}}>
+      <div style={{textAlign: "center", marginBottom: "16px"}}>
+        <h1 style={{margin: "4px 0", color: "#8B4513", fontSize: "26px", fontWeight: "800"}}>
+          🔮 BHUVANA
