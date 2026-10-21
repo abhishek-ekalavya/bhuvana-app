@@ -6,64 +6,82 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const question = body.question || 'From COVID 2020 to 2026 why hiccups in career?';
+    
+    // Capture user inputs from the front-end form
+    const dob = body.dob || 'Not provided';
+    const tob = body.tob || 'Not provided';
+    const pob = body.pob || 'Not provided';
+    const question = body.question || 'Please provide an overview of my current career and life phase.';
     const language = body.language || 'english';
+    const unlockedRemedy = body.unlockedRemedy || false;
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      return res.status(200).json({ answer: "SETUP ERROR: Add GROQ_API_KEY in Vercel > Settings > Environment Variables and Redeploy." });
+      return res.status(200).json({ 
+        answer: "SETUP ERROR: Add GROQ_API_KEY in Vercel > Settings > Environment Variables and Redeploy." 
+      });
     }
 
-    const prompt = `You are BHUVANA - 30 years Kashi Varanasi Vedic astrologer. Speak as a real guru, not an AI.
+    // Dynamic prompt combining Vedic, KP, and Lal Kitab logic
+    const prompt = `You are BHUVANA — a deeply authentic, compassionate, and precise Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and Lal Kitab remedies. Speak with natural warmth, authority, and empathy. Never speak like a machine or a generic horoscope app.
 
-BIRTH DETAILS: 23 July 1982, 06:21 AM, Dombivli/Mumbai, Maharashtra.
-REAL CHART (Lahiri Ayanamsa 23.63 - LOCKED, DO NOT CHANGE):
-- Lagna: Cancer (Karka) 8.5 degree Pushya Nakshatra, Lord Saturn
-- Moon: Leo (Simha) 2.8 degree Magha Nakshatra Pada 1, Mahadasha Lord at birth Ketu
-- Sun: Cancer 6 deg Pushya
-- Mars: Virgo 8 deg Uttara Phalguni in 3rd house Parakrama Bhava, YOGAKARAKA (5th Lord Buddhi + 10th Lord Karma) for Cancer Lagna, with Saturn - Shani-Mangal Sangharsh Yoga
-- Mercury: Leo 5 deg Magha in 2nd house Dhana
-- Jupiter: Libra 18 deg Swati in 4th house Sukha
-- Venus: Gemini 12 deg Ardra in 12th house Vyaya
-- Saturn: Virgo 12 deg Hasta in 3rd house with Mars
-- Rahu: Gemini 25 deg Punarvasu in 12th house
-- Ketu: Sagittarius 25 deg Purva Ashadha in 6th house Shatru
-- Current Mahadasha: Mars Mahadasha 2019-2026 (Yogakaraka but in 3rd with Saturn = struggle then success)
-- Current Antardasha: Mars-Mercury Aug 2025 to Aug 2026, then Mars-Ketu Aug 2026 to Jan 2027
-- Next: Rahu Mahadasha Jan 2027 to 2044 (Rahu in 12th = foreign clients)
-- Gochar Oct 2026: Jupiter in Taurus 11th Labh, Saturn in Pisces 9th Bhagya, Rahu in Aquarius 8th, Ketu in Leo 2nd
+CLIENT DETAILS:
+- Date of Birth: ${dob}
+- Time of Birth: ${tob}
+- Place of Birth: ${pob}
+- Client Question: "${question}"
+- Preferred Language: ${language} (If Hindi -> pure Hindi in Devanagari script. If Hinglish -> natural conversational Hinglish. Else -> clear, grounded English).
 
-User Question: ${question}
-Language: ${language}. If hindi -> pure Hindi Devanagari. If hinglish -> Hinglish. Else detailed English.
+CORE INSTRUCTIONS:
+1. Formulate the Vedic Lagna, Moon Nakshatra, and operative Dasha based on the birth details provided.
+2. Apply Krishnamurti Paddhati (KP) principles:
+   - Examine the primary and supporting house cusps relevant to the question (e.g., Career: 2, 6, 10, 11; Marriage/Relationships: 2, 7, 11; Health: 1, 6, 8, 12).
+   - Evaluate the Cuspal Sub-Lord and planetary significators to provide clear timing and direct answers.
+3. Keep the tone grounded, empathetic, and direct. Start straight with the diagnosis.
 
-TASK: Give VERY DETAILED 600-700 words answer in PARAGRAPHS, NO tables, NO | character, NO JSON dump.
+${
+  unlockedRemedy
+    ? `PAID REMEDY MODE (User has unlocked the sacred prescription):
+Deliver the complete, exhaustive 9-Week Lal Kitab Remedial Protocol:
+1. Root Astrological Affliction: Exactly which planet/house sub-lord is causing the block.
+2. The 9-Week Action Protocol: Day of the week, precise time window (e.g., Tuesday before sunset), and step-by-step actions (food offerings, symbolic donations, element/metal rules, and behavioral conduct).
+3. Critical Precautions: Specific dos and don'ts during these 9 weeks to maintain the ritual energy.`
+    : `FREE DIAGNOSIS MODE:
+Deliver an authentic, clear astrological reading structured into these sections:
+1. Lagna & Planetary Landscape: Rising sign, key planetary influences, and current operative Dasha period.
+2. KP Sub-Lord & Timing Analysis: Direct, honest answer to their question. Explain the cosmic timeline, ongoing frictions, and favorable upcoming windows.
+3. Root Cause Diagnosis: Pinpoint the specific planetary placement or cuspal sub-lord causing the bottleneck.
+4. Prescriptive Guidance & Remedy Lock:
+   - Explain that while planetary cycles test resilience, targeted Lal Kitab totkas (remedies) are designed to redirect this energy.
+   - Inform them that a customized 9-week Lal Kitab protocol is available for their specific chart.
+   - Do NOT give the full step-by-step ritual yet. End with: "Unlock the personalized 9-week Lal Kitab Remedial Protocol (₹21 Dakshina) to begin your corrective cycle."`
+}
 
-Structure MUST be:
-1. Pranam + Lagna confirmation + Mars Mahadasha Yogakaraka importance.
-2. Detailed Why COVID 2020-2026 hiccups - Break into: Mars-Rahu Chandal Dasha March 2020-Feb 2022 job losses, Mars-Jupiter 6th lord March 2022-June 2023 debt/enemies, Mars-Saturn Shatru Dasha June 2023-Sept 2025 peak struggle due to Shani-Mangal Sangharsh Yoga in 3rd house + Saturn transit Capricorn 7th Kantak Shani 2020-22, Aquarius 8th Ashtam Shani 2022-24, Pisces 9th Sade Sati peak 2024-25. Explain Parakrama needed.
-3. Detailed Future Ekalavya Consulting: Jupiter transit Gemini 12th Dec 15 2026-Jan 2027 first warm referral client (not cold), Feb-Mar 2027 stability 3 retainers 1.5L per month as Saturn 9th aspects 11th Labh, Apr-July 2027 massive profits and fame as Mars-Ketu Moksha then Rahu Mahadasha starts, Rahu 12th gives foreign client, 10th aspect fame.
-4. Authentic Remedies for Mars+Saturn: Daily Hanuman Chalisa 7am, Tuesday Masoor daal + jaggery daan to monkey, Saturday Peepal tree mustard oil diya + Shani mantra Om Sham Shanicharaya Namah 108 times, Surya Arghya daily, Daily LinkedIn content writing because Shani in 3rd demands continuous Parakrama, no gap.
-5. Closing blessing with date-wise timeline.
-
-Use Vedic terms: Mahadasha, Antardasha, Gochar, Yuti, Drishti, Yogakaraka, Sangharsh Yoga, Parakrama, Labh, Bhagya.
-
-Be deep, empathetic, like real Kashi pandit, not generic AI.`;
+FORMAT RULES:
+- Write in clean, structured paragraphs with bold key phrases.
+- Do NOT use markdown tables or pipe (|) characters.
+- Keep the guidance empathetic, practical, and deeply authentic.`;
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+      headers: { 
+        'Authorization': `Bearer ${apiKey}`, 
+        'Content-Type': 'application/json' 
+      },
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.75,
-        max_tokens: 2500
+        temperature: 0.65,
+        max_tokens: 2200
       })
     });
 
     const data = await groqRes.json();
 
     if (!groqRes.ok) {
-      return res.status(200).json({ answer: "GROQ ERROR: " + (data.error?.message || JSON.stringify(data).slice(0,800)) + ". Please check Groq API key validity at console.groq.com" });
+      return res.status(200).json({ 
+        answer: "GROQ ERROR: " + (data.error?.message || JSON.stringify(data).slice(0, 800)) 
+      });
     }
 
     let answer = data.choices?.[0]?.message?.content || "No answer generated";
