@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ answer: "SETUP ERROR: GROQ_API_KEY is missing in Vercel Environment Variables." });
     }
 
-    // Format Date: DD/MM/YYYY
+    // Date formatting: DD/MM/YYYY
     let day = '23', month = '07', year = '1982';
     if (dob && dob.includes('-')) {
       const parts = dob.split('-');
@@ -42,18 +42,13 @@ export default async function handler(req, res) {
       formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
-    // Standard baseline coordinates (Dombivli/Mumbai)
+    // Base verified astrological truth
     let astroContext = `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
 
-    // Fetch from Vedic API with a strict 2.5-second timeout to prevent Vercel 504 timeouts
+    // 1. Fetch live coordinates from Vedic API
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
-
       const vUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${formattedDate}&tob=${formattedTime}&lat=19.2183&lon=73.0867&tz=5.5&api_key=${vedicKey}&lang=en`;
-      const vRes = await fetch(vUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
+      const vRes = await fetch(vUrl);
       if (vRes.ok) {
         const vData = await vRes.json();
         const pData = vData.response || vData.data;
@@ -68,10 +63,40 @@ export default async function handler(req, res) {
         }
       }
     } catch (err) {
-      // If Vedic API takes > 2.5s or fails, continue instantly using astroContext baseline
-      console.log("Vedic API fetch bypassed for speed.");
+      console.log("Vedic API fetch error:", err);
     }
 
+    // 2. Dynamic model detection that worked earlier
+    let activeModel = null;
+    try {
+      const mRes = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${groqKey}` }
+      });
+      if (mRes.ok) {
+        const mData = await mRes.json();
+        const textModels = (mData.data || [])
+          .map(m => m.id)
+          .filter(id => 
+            !id.includes('whisper') && 
+            !id.includes('guard') && 
+            !id.includes('vision') && 
+            !id.includes('orpheus')
+          );
+        if (textModels.length > 0) {
+          activeModel = textModels.find(m => m.includes('70b')) || 
+                        textModels.find(m => m.includes('8b')) || 
+                        textModels[0];
+        }
+      }
+    } catch (e) {
+      console.log("Model lookup failed:", e);
+    }
+
+    if (!activeModel) {
+      activeModel = 'llama3-70b-8192';
+    }
+
+    // 3. Prompt setup
     const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
 
 VERIFIED ASTRONOMICAL GROUND TRUTH:
@@ -86,9 +111,10 @@ CLIENT DETAILS:
 
 CRITICAL INSTRUCTIONS:
 1. Base your reading directly on the verified chart data above.
-2. Foundation: Cancer Lagna, Moon in Magha Nakshatra, Saturn in 3rd House in Virgo.
-3. Be concise, punchy, and grounded. Deliver the reading within 300 to 400 words.
-4. NEVER mention consultation fees like ₹2,100, and never suggest phone calls or private sessions.
+2. Vedic foundation: Cancer Lagna, Moon in Magha Nakshatra, Saturn in 3rd House in Virgo.
+3. Address their specific question with clarity, technical rigor, and deep empathy.
+4. Keep paragraphs readable and concise.
+5. NEVER mention consultation fees like ₹2,100, and never suggest phone calls or private sessions.
 
 ${
   unlockedRemedy
@@ -112,7 +138,7 @@ FORMAT:
 - Clean paragraphs with bold key phrases.
 - No markdown tables, no pipes (|).`;
 
-    // Direct single call with tight max_tokens to return in under 3 seconds
+    // 4. Execute LLM call
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 
@@ -120,41 +146,18 @@ FORMAT:
         'Content-Type': 'application/json' 
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: activeModel,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.5,
-        max_tokens: 750
+        max_tokens: 1500
       })
     });
 
-    const resText = await groqRes.text();
-    let data;
-    try {
-      data = JSON.parse(resText);
-    } catch (e) {
-      return res.status(200).json({ answer: "Service error: " + resText.slice(0, 300) });
-    }
-
+    const data = await groqRes.json();
     if (!groqRes.ok) {
-      // If 8b model ID differs on your key, fallback directly to versatile
-      const retryRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${groqKey}`, 
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({
-          model: 'llama3-8b-8192',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.5,
-          max_tokens: 750
-        })
+      return res.status(200).json({ 
+        answer: "ENGINE ERROR: " + (data?.error?.message || JSON.stringify(data)) 
       });
-      const retryData = await retryRes.json();
-      if (retryRes.ok && retryData.choices?.[0]?.message?.content) {
-        return res.status(200).json({ answer: retryData.choices[0].message.content.replace(/\|/g, ' ').trim() });
-      }
-      return res.status(200).json({ answer: "ENGINE ERROR: " + (data?.error?.message || resText) });
     }
 
     const answer = data.choices?.[0]?.message?.content?.replace(/\|/g, ' ').trim() || "No response generated.";
