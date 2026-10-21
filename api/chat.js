@@ -69,7 +69,7 @@ FORMAT RULES:
         'Content-Type': 'application/json' 
       },
       body: JSON.stringify({
-        model: 'llama3-8b-8192',
+        model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.65,
         max_tokens: 2200
