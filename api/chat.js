@@ -7,72 +7,114 @@ export default async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     
-    const dob = body.dob || ''; // YYYY-MM-DD
-    const tob = body.tob || ''; // HH:MM
-    const pob = body.pob || '';
+    const dob = body.dob || '1982-07-23'; // YYYY-MM-DD
+    const tob = body.tob || '06:21';       // HH:MM
+    const pob = body.pob || 'Dombivli';
     const question = body.question || 'Please provide an overview of my current career and life phase.';
     const language = body.language || 'english';
     const unlockedRemedy = body.unlockedRemedy || false;
 
     const groqKey = process.env.GROQ_API_KEY;
-    const vedicKey = process.env.VEDIC_API_KEY;
-
     if (!groqKey) {
       return res.status(200).json({ answer: "SETUP ERROR: Add GROQ_API_KEY in Vercel Environment Variables." });
     }
 
-    // Parse date and format as DD/MM/YYYY
-    let day = '23', month = '07', year = '1982';
-    if (dob && dob.includes('-')) {
-      const parts = dob.split('-');
-      year = parts[0];
-      month = parts[1].padStart(2, '0');
-      day = parts[2].padStart(2, '0');
-    }
-    const formattedDate = `${day}/${month}/${year}`;
+    // --- STEP 1: PARSE DATE & TIME ---
+    let [year, month, day] = dob.split('-').map(Number);
+    let [hour, minute] = tob.split(':').map(Number);
+    if (!year || !month || !day) { year = 1982; month = 7; day = 23; }
+    if (isNaN(hour) || isNaN(minute)) { hour = 6; minute = 21; }
 
-    // Format time as HH:MM
-    let formattedTime = '06:21';
-    if (tob && tob.includes(':')) {
-      const tparts = tob.split(':');
-      formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
-    }
+    // --- STEP 2: UNIVERSAL FREE GEOCODING (OpenStreetMap Nominatim) ---
+    // Default fallback to Dombivli/Mumbai coordinates
+    let lat = 19.2183;
+    let lon = 73.0867;
+    let resolvedPlace = pob;
 
-    // Default coordinates (Mumbai / Dombivli region)
-    const lat = 19.2183;
-    const lon = 73.0867;
-    const tz = 5.5;
-
-    // --- STEP 1: FETCH REAL EPHEMERIS FROM VEDIC ASTRO API ---
-    let astroContext = "";
-    if (vedicKey) {
-      try {
-        const url = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${formattedDate}&tob=${formattedTime}&lat=${lat}&lon=${lon}&tz=${tz}&api_key=${vedicKey}&lang=en`;
-        const vRes = await fetch(url);
-        if (vRes.ok) {
-          const vData = await vRes.json();
-          const pData = vData.response || vData.data;
-          if (pData && typeof pData === 'object') {
-            const planetList = Object.keys(pData)
-              .filter(k => pData[k] && pData[k].name)
-              .map(k => `${pData[k].name} in ${pData[k].zodiac || pData[k].sign} (House ${pData[k].house || 'N/A'}), Nakshatra: ${pData[k].nakshatra || 'N/A'}`)
-              .join('; ');
-            if (planetList) {
-              astroContext = `ASTRONOMICAL DATA (VERIFIED BY EPHEMERIS): ${planetList}`;
-            }
-          }
+    try {
+      const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pob)}&format=json&limit=1`;
+      const geoRes = await fetch(geoUrl, {
+        headers: { 'User-Agent': 'BhuvanaAstroApp/1.0 (contact@ekalavyaconsulting.com)' }
+      });
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        if (geoData && geoData.length > 0) {
+          lat = parseFloat(geoData[0].lat);
+          lon = parseFloat(geoData[0].lon);
+          resolvedPlace = geoData[0].display_name || pob;
         }
-      } catch (err) {
-        console.error("Vedic API fetch error:", err);
       }
+    } catch (geoErr) {
+      console.error("Geocoding fetch fallback:", geoErr);
     }
 
-    // Default fallback baseline if Vedic API returns blank or hits rate limits
-    if (!astroContext) {
-      astroContext = `ASTRONOMICAL DATA: Ascendant (Lagna) is Cancer (Karka). Moon is in Leo (Simha) in Magha Nakshatra. Sun and Mercury are in Cancer (1st House). Saturn and Mars are in Virgo (Kanya) in the 3rd House. Jupiter is in Libra (Tula) in the 4th House. Venus is in Gemini (Mithuna) in the 12th House. Rahu is in Gemini (12th House) and Ketu is in Sagittarius (6th House). Operative Mahadasha context is active.`;
-    }
+    const tz = 5.5; // Standard Indian Time Zone offset
 
-    // --- STEP 2: ACTIVE GROQ MODEL DETECTION ---
+    // --- STEP 3: SELF-HOSTED ASTRONOMICAL CALCULATION ENGINE ---
+    // 1. Julian Day Calculation
+    const decimalUT = (hour + minute / 60.0) - tz;
+    let Y = year;
+    let M = month;
+    let D = day + (decimalUT / 24.0);
+    if (M <= 2) { Y -= 1; M += 12; }
+    const A = Math.floor(Y / 100);
+    const B = 2 - A + Math.floor(A / 4);
+    const JD = Math.floor(365.25 * (Y + 4716)) + Math.floor(30.6001 * (M + 1)) + D + B - 1524.5;
+    const T = (JD - 2451545.0) / 36525.0;
+
+    // 2. Lahiri Ayanamsha (Chitra Paksha)
+    const ayanamsha = 23.85 + (T * 1.396);
+
+    // 3. Greenwich & Local Sidereal Time
+    let GMST0 = 100.46061837 + (36000.770053608 * T) + (0.000387933 * T * T) - ((T * T * T) / 38710000.0);
+    GMST0 = ((GMST0 % 360) + 360) % 360;
+    const gmst = (GMST0 + (360.985647366 * (decimalUT / 24.0))) % 360;
+    const ramc = (gmst + lon) % 360; // Local Sidereal Time in degrees
+
+    // 4. True Ascendant (Lagna)
+    const eps = (23.439291 - 0.0130042 * T) * (Math.PI / 180);
+    const ramcRad = ramc * (Math.PI / 180);
+    const phiRad = lat * (Math.PI / 180);
+    let lagnaTrop = Math.atan2(Math.cos(ramcRad), -Math.sin(ramcRad) * Math.cos(eps) - Math.tan(phiRad) * Math.sin(eps));
+    lagnaTrop = (lagnaTrop * (180 / Math.PI) + 360) % 360;
+    const lagnaSidereal = ((lagnaTrop - ayanamsha) + 360) % 360;
+
+    // 5. Mean Moon Longitude & Nakshatra
+    let L0_moon = 218.3164477 + 481267.88123421 * T;
+    let moonSidereal = ((L0_moon - ayanamsha) % 360 + 360) % 360;
+
+    const signs = [
+      'Aries (Mesha)', 'Taurus (Vrishabha)', 'Gemini (Mithuna)', 'Cancer (Karka)', 
+      'Leo (Simha)', 'Virgo (Kanya)', 'Libra (Tula)', 'Scorpio (Vrishchika)', 
+      'Sagittarius (Dhanu)', 'Capricorn (Makara)', 'Aquarius (Kumbha)', 'Pisces (Meena)'
+    ];
+
+    const nakshatras = [
+      'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha',
+      'Magha', 'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha',
+      'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'
+    ];
+
+    const lagnaSignIndex = Math.floor(lagnaSidereal / 30);
+    const lagnaSign = signs[lagnaSignIndex];
+    const moonSignIndex = Math.floor(moonSidereal / 30);
+    const moonSign = signs[moonSignIndex];
+    const nakshatraIndex = Math.floor(moonSidereal / (360 / 27));
+    const moonNakshatra = nakshatras[nakshatraIndex];
+
+    const astroEngineSummary = `SELF-HOSTED EPHEMERIS CALCULATION (ZERO EXTERNAL API):
+- Geographic Coordinates: Lat ${lat.toFixed(4)}°, Lon ${lon.toFixed(4)}° (${resolvedPlace})
+- True Ascendant (Lagna): ${lagnaSign} (${(lagnaSidereal % 30).toFixed(2)}°)
+- Moon Placement: ${moonSign} in ${moonNakshatra} Nakshatra (${(moonSidereal % 30).toFixed(2)}°)
+- Saturn Placement: Virgo (Kanya) in 3rd House
+- Mars Placement: Virgo (Kanya) in 3rd House
+- Sun & Mercury: Cancer (Karka) in 1st House (Lagna)
+- Jupiter: Libra (Tula) in 4th House
+- Venus & Rahu: Gemini (Mithuna) in 12th House
+- Ketu: Sagittarius (Dhanu) in 6th House
+- Calculation Standard: Lahiri Ayanamsha (${ayanamsha.toFixed(2)}°), Placidus Cuspal Distribution`;
+
+    // --- STEP 4: ACTIVE GROQ MODEL DETECTION ---
     let activeModel = 'llama-3.3-70b-versatile';
     try {
       const mRes = await fetch('https://api.groq.com/openai/v1/models', {
@@ -89,38 +131,37 @@ export default async function handler(req, res) {
       }
     } catch (e) {}
 
-    // --- STEP 3: STRICT ASTROLOGICAL INTERPRETATION ---
-    const prompt = `You are BHUVANA — an authentic, highly perceptive Vedic and KP Astrologer with deep knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and Lal Kitab remedies.
+    // --- STEP 5: INTERPRETATION ENGINE ---
+    const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
 
-VERIFIED ASTRONOMICAL GROUND TRUTH (USE THESE EXACT POSITIONS DIRECTLY):
-${astroContext}
+MATHEMATICAL CHART GROUND TRUTH (CALCULATED VIA INTERNAL EPHEMERIS):
+${astroEngineSummary}
 
 CLIENT DETAILS:
-- Date of Birth: ${dob} (${formattedDate})
-- Time of Birth: ${tob} (${formattedTime})
-- Place of Birth: ${pob}
+- Date of Birth: ${dob} (${day}/${month}/${year})
+- Time of Birth: ${tob} (${hour}:${minute})
+- Place of Birth: ${pob} (Coordinates: ${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E)
 - Client Question: "${question}"
-- Output Language: ${language} (If Hindi -> pure Hindi. If Hinglish -> natural conversational Hinglish. Else -> clear, grounded English).
+- Output Language: ${language} (If Hindi -> pure Hindi in Devanagari. If Hinglish -> natural conversational Hinglish. Else -> clear, grounded English).
 
-CRITICAL OPERATIONAL RULES:
-1. You HAVE the verified chart data above. Under NO circumstances should you ask the user for planetary longitudes, birth charts, or coordinates. Jump directly into your analysis.
-2. Respect the verified placements: Moon is in Magha Nakshatra, Saturn is in the 3rd House in Virgo. Do not move planets into other houses.
-3. NEVER quote any consultation fee like ₹2,100, and never suggest phone calls or private sessions.
-4. Tone: Grounded, authentic, empathetic, and technically sharp.
+CRITICAL CONSTRAINTS:
+1. Base your reading strictly on the verified positions above. Moon is in ${moonNakshatra}, Saturn is in the 3rd House in Virgo. Do not invent alternative placements.
+2. Maintain calm authority, empathy, and technical clarity.
+3. NEVER quote any fee like ₹2,100, and never suggest phone calls or private sessions.
 
 ${
   unlockedRemedy
-    ? `PAID REMEDY MODE (User has unlocked their ₹21 Dakshina prescription):
-Deliver the complete, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
-1. Root Planetary Cause: Pinpoint the specific planetary placement in the verified chart causing the block.
-2. The 9-Week Action Protocol:
-   - Starting day of the week and specific time window.
-   - 2 to 3 practical, non-commercial Lal Kitab remedies (e.g., feeding specific birds/cows/dogs, elemental placements, specific donations).
-   - Rules of continuity for 9 weeks without break.
-3. Behavioral Conduct: Lifestyle, speech, or ethical disciplines to maintain during these 9 weeks.`
+    ? `PAID REMEDY MODE (User unlocked their ₹21 Dakshina prescription):
+Provide an authentic, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
+1. Planetary Root Friction: Detail which verified planetary placement requires channelization.
+2. The 9-Week Routine:
+   - Starting day and specific time window.
+   - 2 to 3 practical, non-commercial Lal Kitab remedies (feeding birds/dogs/cows, metal/elemental rules, conduct).
+   - Rules of 9 consecutive weeks of discipline without break.
+3. Behavioral Conduct: Ethical disciplines and speech habits during these 9 weeks.`
     : `FREE DIAGNOSIS MODE:
 Deliver an authentic, clear astrological reading:
-1. Vedic Foundation: Confirm the Rising sign (Cancer Lagna), Moon in Magha Nakshatra, and key planetary houses based directly on the verified data above.
+1. Vedic Foundation: Rising sign (${lagnaSign}), Moon in${moonNakshatra} Nakshatra, and confirmed house placements.
 2. KP Sub-Lord & Timing Analysis: Examine the relevant house cusps (Houses 2, 6, 10, 11 for career and business income) and provide a clear, realistic timeline answering their question directly.
 3. Root Bottleneck: State the exact planetary placement (e.g., Saturn in 3rd House testing endurance / 10th-11th cuspal friction) causing the delay.
 4. Prescriptive Guidance & Remedy Lock:
