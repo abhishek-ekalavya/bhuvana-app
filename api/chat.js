@@ -27,6 +27,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ answer: "SETUP ERROR: GROQ_API_KEY is missing in Vercel Environment Variables." });
     }
 
+    // Format Date: DD/MM/YYYY
     let day = '23', month = '07', year = '1982';
     if (dob && dob.includes('-')) {
       const parts = dob.split('-');
@@ -42,9 +43,10 @@ export default async function handler(req, res) {
       formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
+    // Baseline coordinates
     let astroContext = cachedAstroContext || `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
 
-    // Only query external API if no cached context exists
+    // Only query external Vedic API if not cached (1 credit per session)
     if (!cachedAstroContext) {
       try {
         const vUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${formattedDate}&tob=${formattedTime}&lat=19.2183&lon=73.0867&tz=5.5&api_key=${vedicKey}&lang=en`;
@@ -55,7 +57,7 @@ export default async function handler(req, res) {
           if (pData && typeof pData === 'object') {
             const planetList = Object.keys(pData)
               .filter(k => pData[k] && pData[k].name)
-              .map(k => `${pData[k].name} in ${pData[k].zodiac || pData[k].sign} (House ${pData[k].house || 'N/A'}), Nakshatra: ${pData[k].nakshatra || 'N/A'}`)
+              .map(k => `${pData[k].name} in${pData[k].zodiac || pData[k].sign} (House ${pData[k].house \vert{}\vert{} 'N/A'}), Nakshatra:${pData[k].nakshatra || 'N/A'}`)
               .join('; ');
             if (planetList) {
               astroContext = `ASTRONOMICAL DATA (VERIFIED BY VEDIC EPHEMERIS): ${planetList}`;
@@ -65,6 +67,41 @@ export default async function handler(req, res) {
       } catch (err) {
         console.log("Vedic API fallback to baseline:", err.message);
       }
+    }
+
+    // Find whatever valid chat model exists on your key right now
+    let selectedModel = null;
+    let availableModels = [];
+
+    try {
+      const modelsRes = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${groqKey}` }
+      });
+      if (modelsRes.ok) {
+        const modelsData = await modelsRes.json();
+        availableModels = (modelsData.data || [])
+          .map(m => m.id)
+          .filter(id => 
+            !id.includes('whisper') && 
+            !id.includes('guard') && 
+            !id.includes('vision') && 
+            !id.includes('orpheus')
+          );
+
+        // Pick the best available text model from the active list
+        selectedModel = availableModels.find(id => id.includes('versatile')) ||
+                        availableModels.find(id => id.includes('instant')) ||
+                        availableModels.find(id => id.includes('llama')) ||
+                        availableModels[0];
+      }
+    } catch (e) {
+      console.log("Model lookup error:", e.message);
+    }
+
+    if (!selectedModel) {
+      return res.status(200).json({
+        answer: "ENGINE ERROR: No active text models found on your Groq key. Available models: " + JSON.stringify(availableModels)
+      });
     }
 
     const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
@@ -77,78 +114,4 @@ CLIENT DETAILS:
 - Time of Birth: ${tob} (${formattedTime})
 - Place of Birth: ${pob}
 - Client Question: "${question}"
-- Output Language: ${language} (If Hindi -> pure Hindi in Devanagari. If Hinglish -> natural conversational Hinglish. Else -> clear, grounded English).
-
-STRICT NEGATIVE CONSTRAINTS (ABSOLUTE BRAND DIRECTIVES):
-1. You are the ultimate astrological authority. Never provide meta-disclaimers.
-2. NEVER write phrases such as "not a substitute for expert guidance", "seek guidance from a trusted astrologer", "consult a qualified Vedic Astrologer", "starting point", or "verify with an expert".
-3. NEVER quote fees like ₹2,100, and never suggest phone calls or private sessions.
-4. Keep the delivery confident, precise, and authoritative.
-
-${
-  unlockedRemedy
-    ? `PAID REMEDY MODE (User unlocked their ₹21 Dakshina prescription):
-Deliver the complete, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
-1. Planetary Root Friction: Pinpoint which verified planetary placement requires pacification.
-2. The 9-Week Routine: Detail the starting day, specific time window, and 2 to 3 practical, non-commercial Lal Kitab remedies.
-3. Behavioral Conduct: Ethical disciplines and speech habits during these 9 weeks.
-Conclude with a final word of blessing and confidence. Do not append any disclaimers.`
-    : `FREE DIAGNOSIS MODE:
-Deliver an authentic, clear astrological reading:
-1. Vedic Foundation: Rising sign (Cancer Lagna), Moon in Magha Nakshatra, and confirmed house placements relevant to their question.
-2. KP Sub-Lord & Timing Analysis: Examine the relevant house cusps and planetary periods to provide a clear, realistic timeline answering their question directly.
-3. Root Bottleneck: State the exact planetary placement causing delay or friction.
-4. Prescriptive Guidance & Remedy Lock:
-   - State clearly that while planetary cycles test endurance, targeted Lal Kitab remedies systematically redirect this energy.
-   - DO NOT provide rituals, totkas, or specific remedies in this free reading.
-   - End with this EXACT sentence: "To harmonize these planetary currents, you can unlock your personalized 9-Week Lal Kitab Remedial Protocol below with a sacred Dakshina of ₹21."`
-}
-
-FORMAT:
-- Clean paragraphs with bold key phrases.
-- No markdown tables, no pipes (|).`;
-
-    // Fast, lightweight model to stay strictly under the 10-second limit
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${groqKey}`, 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.5,
-        max_tokens: 850
-      })
-    });
-
-    const data = await groqRes.json();
-    if (!groqRes.ok) {
-      return res.status(200).json({ 
-        answer: "ENGINE NOTICE: " + (data?.error?.message || "Please re-submit your query.") 
-      });
-    }
-
-    let answer = data.choices?.[0]?.message?.content?.replace(/\|/g, ' ').trim() || "No response generated.";
-    
-    // Programmatic filter to strip any residual disclaimer sentences
-    answer = answer.replace(/Remember,?\s*these remedies are tailored.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Seek guidance from a trusted.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Please note that these remedies are only a starting point.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/not a substitute for expert guidance.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/consult a qualified.*?astrologer.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/consult with an expert.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/consult with a trusted.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Please consult.*?(?=\n|$)/gi, '');
-    answer = answer.trim();
-
-    return res.status(200).json({ 
-      answer,
-      astroContext 
-    });
-
-  } catch (e) {
-    return res.status(200).json({ answer: "Server error handled: " + e.message });
-  }
-}
+- Output Language: ${language} (If Hindi
