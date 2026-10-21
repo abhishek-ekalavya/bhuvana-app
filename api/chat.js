@@ -18,6 +18,7 @@ export default async function handler(req, res) {
     const question = body.question || 'Please provide an overview of my current career and life phase.';
     const language = body.language || 'english';
     const unlockedRemedy = body.unlockedRemedy || false;
+    const cachedAstroContext = body.cachedAstroContext || null;
 
     const groqKey = process.env.GROQ_API_KEY;
     const vedicKey = process.env.VEDIC_API_KEY || '4fe43c11-5aa9-54d1-8211-4c399d4d671c';
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ answer: "SETUP ERROR: GROQ_API_KEY is missing in Vercel Environment Variables." });
     }
 
-    // Date formatting: DD/MM/YYYY
+    // Format Date: DD/MM/YYYY
     let day = '23', month = '07', year = '1982';
     if (dob && dob.includes('-')) {
       const parts = dob.split('-');
@@ -42,31 +43,33 @@ export default async function handler(req, res) {
       formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
-    // Base verified astrological truth
-    let astroContext = `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
+    // Baseline astronomical context
+    let astroContext = cachedAstroContext || `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
 
-    // 1. Fetch live coordinates from Vedic API
-    try {
-      const vUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${formattedDate}&tob=${formattedTime}&lat=19.2183&lon=73.0867&tz=5.5&api_key=${vedicKey}&lang=en`;
-      const vRes = await fetch(vUrl);
-      if (vRes.ok) {
-        const vData = await vRes.json();
-        const pData = vData.response || vData.data;
-        if (pData && typeof pData === 'object') {
-          const planetList = Object.keys(pData)
-            .filter(k => pData[k] && pData[k].name)
-            .map(k => `${pData[k].name} in ${pData[k].zodiac || pData[k].sign} (House ${pData[k].house || 'N/A'}), Nakshatra: ${pData[k].nakshatra || 'N/A'}`)
-            .join('; ');
-          if (planetList) {
-            astroContext = `ASTRONOMICAL DATA (VERIFIED BY VEDIC EPHEMERIS): ${planetList}`;
+    // ONLY call Vedic API if no cached context exists (Saves 1 credit per follow-up question)
+    if (!cachedAstroContext) {
+      try {
+        const vUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${formattedDate}&tob=${formattedTime}&lat=19.2183&lon=73.0867&tz=5.5&api_key=${vedicKey}&lang=en`;
+        const vRes = await fetch(vUrl);
+        if (vRes.ok) {
+          const vData = await vRes.json();
+          const pData = vData.response || vData.data;
+          if (pData && typeof pData === 'object') {
+            const planetList = Object.keys(pData)
+              .filter(k => pData[k] && pData[k].name)
+              .map(k => `${pData[k].name} in ${pData[k].zodiac || pData[k].sign} (House ${pData[k].house || 'N/A'}), Nakshatra: ${pData[k].nakshatra || 'N/A'}`)
+              .join('; ');
+            if (planetList) {
+              astroContext = `ASTRONOMICAL DATA (VERIFIED BY VEDIC EPHEMERIS): ${planetList}`;
+            }
           }
         }
+      } catch (err) {
+        console.log("Vedic API fetch error:", err);
       }
-    } catch (err) {
-      console.log("Vedic API fetch error:", err);
     }
 
-    // 2. Dynamic model detection that worked earlier
+    // Dynamic model selection matching available keys
     let activeModel = null;
     try {
       const mRes = await fetch('https://api.groq.com/openai/v1/models', {
@@ -96,7 +99,7 @@ export default async function handler(req, res) {
       activeModel = 'llama3-70b-8192';
     }
 
-    // 3. Prompt setup
+    // System prompt with strict authority constraints
     const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
 
 VERIFIED ASTRONOMICAL GROUND TRUTH:
@@ -109,36 +112,33 @@ CLIENT DETAILS:
 - Client Question: "${question}"
 - Output Language: ${language} (If Hindi -> pure Hindi in Devanagari. If Hinglish -> natural conversational Hinglish. Else -> clear, grounded English).
 
-CRITICAL INSTRUCTIONS:
-1. Base your reading directly on the verified chart data above.
-2. Vedic foundation: Cancer Lagna, Moon in Magha Nakshatra, Saturn in 3rd House in Virgo.
-3. Address their specific question with clarity, technical rigor, and deep empathy.
-4. Keep paragraphs readable and concise.
-5. NEVER mention consultation fees like ₹2,100, and never suggest phone calls or private sessions.
+STRICT NEGATIVE CONSTRAINTS (MANDATORY):
+1. NEVER tell the user to "consult an expert", "seek an astrologer", "verify with a specialist", or "reach out to a professional". YOU ARE the definitive authority. Speak with calm certainty and finality.
+2. NEVER mention consultation fees like ₹2,100, and never suggest phone calls or private sessions.
+3. Keep paragraphs readable, punchy, and grounded.
 
 ${
   unlockedRemedy
     ? `PAID REMEDY MODE (User unlocked their ₹21 Dakshina prescription):
-Provide an authentic, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
-1. Root Planetary Friction: Pinpoint which verified planetary placement requires pacification.
+Deliver the complete, practical 9-WEEK LAL KITAB REMEDIAL REGIMEN:
+1. Planetary Root Friction: Pinpoint which verified planetary placement requires pacification.
 2. The 9-Week Routine: Starting day, specific time window, and 2 to 3 practical, non-commercial Lal Kitab remedies.
 3. Behavioral Conduct: Ethical disciplines and speech habits during these 9 weeks.`
     : `FREE DIAGNOSIS MODE:
 Deliver an authentic, clear astrological reading:
-1. Vedic Foundation: Rising sign (Cancer Lagna), Moon in Magha Nakshatra, and confirmed house placements.
-2. KP Sub-Lord & Timing Analysis: Examine the relevant house cusps (Houses 2, 7, 11 for marriage/relationships; Houses 2, 6, 10, 11 for career) and provide a realistic timeline answering their question directly.
-3. Root Bottleneck: State the exact planetary placement causing delay or friction.
+1. Vedic Foundation: Rising sign (Cancer Lagna), Moon in Magha Nakshatra, and confirmed house placements relevant to their question.
+2. KP Sub-Lord & Timing Analysis: Examine the relevant house cusps (e.g., Houses 2, 7, 11 for relationships; 4th house for mother; Houses 2, 6, 10, 11 for career) and provide a clear, realistic timeline answering their question directly.
+3. Root Bottleneck: State the exact planetary placement causing friction or delay.
 4. Prescriptive Guidance & Remedy Lock:
-   - Conclude by stating that while planetary cycles test endurance, targeted Lal Kitab remedies systematically redirect this energy.
-   - Do NOT provide the full step-by-step remedies yet.
-   - End with this exact sentence: "To harmonize these planetary currents, you can unlock your personalized 9-Week Lal Kitab Remedial Protocol below with a sacred Dakshina of ₹21."`
+   - State clearly that while planetary cycles test endurance, targeted Lal Kitab remedies systematically redirect this energy.
+   - DO NOT provide rituals, totkas, or specific remedies in this free reading.
+   - End with this EXACT sentence: "To harmonize these planetary currents, you can unlock your personalized 9-Week Lal Kitab Remedial Protocol below with a sacred Dakshina of ₹21."`
 }
 
 FORMAT:
 - Clean paragraphs with bold key phrases.
 - No markdown tables, no pipes (|).`;
 
-    // 4. Execute LLM call
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 
@@ -160,8 +160,17 @@ FORMAT:
       });
     }
 
-    const answer = data.choices?.[0]?.message?.content?.replace(/\|/g, ' ').trim() || "No response generated.";
-    return res.status(200).json({ answer });
+    let answer = data.choices?.[0]?.message?.content?.replace(/\|/g, ' ').trim() || "No response generated.";
+    
+    // Safety filter to strip any residual disclaimer sentences
+    answer = answer.replace(/Please consult with a trusted astrologer.*/gi, '').trim();
+    answer = answer.replace(/consult with an expert astrologer.*/gi, '').trim();
+    answer = answer.replace(/consult an expert.*/gi, '').trim();
+
+    return res.status(200).json({ 
+      answer,
+      astroContext 
+    });
 
   } catch (e) {
     return res.status(200).json({ answer: "Server error handled: " + e.message });
