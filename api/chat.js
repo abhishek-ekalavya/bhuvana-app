@@ -27,7 +27,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ answer: "SETUP ERROR: GROQ_API_KEY is missing in Vercel Environment Variables." });
     }
 
-    // Format Date: DD/MM/YYYY
     let day = '23', month = '07', year = '1982';
     if (dob && dob.includes('-')) {
       const parts = dob.split('-');
@@ -43,10 +42,9 @@ export default async function handler(req, res) {
       formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
-    // Baseline coordinates
     let astroContext = cachedAstroContext || `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
 
-    // Only query Vedic API if not already in session cache (1 credit per user session)
+    // Only query external API if no cached context exists
     if (!cachedAstroContext) {
       try {
         const vUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?dob=${formattedDate}&tob=${formattedTime}&lat=19.2183&lon=73.0867&tz=5.5&api_key=${vedicKey}&lang=en`;
@@ -110,5 +108,47 @@ FORMAT:
 - Clean paragraphs with bold key phrases.
 - No markdown tables, no pipes (|).`;
 
-    // Direct call using the universally available Mixtral model on Groq
-    const groqRes = await fetch('
+    // Fast, lightweight model to stay strictly under the 10-second limit
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${groqKey}`, 
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.5,
+        max_tokens: 850
+      })
+    });
+
+    const data = await groqRes.json();
+    if (!groqRes.ok) {
+      return res.status(200).json({ 
+        answer: "ENGINE NOTICE: " + (data?.error?.message || "Please re-submit your query.") 
+      });
+    }
+
+    let answer = data.choices?.[0]?.message?.content?.replace(/\|/g, ' ').trim() || "No response generated.";
+    
+    // Programmatic filter to strip any residual disclaimer sentences
+    answer = answer.replace(/Remember,?\s*these remedies are tailored.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/Seek guidance from a trusted.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/Please note that these remedies are only a starting point.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/not a substitute for expert guidance.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/consult a qualified.*?astrologer.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/consult with an expert.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/consult with a trusted.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/Please consult.*?(?=\n|$)/gi, '');
+    answer = answer.trim();
+
+    return res.status(200).json({ 
+      answer,
+      astroContext 
+    });
+
+  } catch (e) {
+    return res.status(200).json({ answer: "Server error handled: " + e.message });
+  }
+}
