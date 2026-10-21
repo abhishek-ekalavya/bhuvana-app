@@ -43,10 +43,10 @@ export default async function handler(req, res) {
       formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
-    // Default baseline coordinates for Dombivli / Mumbai region
+    // Baseline coordinates for Dombivli
     let astroContext = cachedAstroContext || `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
 
-    // Only call Vedic API if no cached context exists (Saves 1 credit per session)
+    // Only call Vedic API if no cached context exists
     if (!cachedAstroContext) {
       try {
         const controller = new AbortController();
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
           if (pData && typeof pData === 'object') {
             const planetList = Object.keys(pData)
               .filter(k => pData[k] && pData[k].name)
-              .map(k => `${pData[k].name} in ${pData[k].zodiac || pData[k].sign} (House ${pData[k].house || 'N/A'}), Nakshatra: ${pData[k].nakshatra || 'N/A'}`)
+              .map(k => `${pData[k].name} in${pData[k].zodiac || pData[k].sign} (House ${pData[k].house \vert{}\vert{} 'N/A'}), Nakshatra:${pData[k].nakshatra || 'N/A'}`)
               .join('; ');
             if (planetList) {
               astroContext = `ASTRONOMICAL DATA (VERIFIED BY VEDIC EPHEMERIS): ${planetList}`;
@@ -103,7 +103,7 @@ Conclude with a final word of blessing and confidence. Do not append any disclai
     : `FREE DIAGNOSIS MODE:
 Deliver an authentic, clear astrological reading:
 1. Vedic Foundation: Rising sign (Cancer Lagna), Moon in Magha Nakshatra, and confirmed house placements relevant to their question.
-2. KP Sub-Lord & Timing Analysis: Examine the relevant house cusps and planetary periods (Dasha / Antardasha / Mahadasha) to provide a clear, realistic timeline answering their question directly.
+2. KP Sub-Lord & Timing Analysis: Examine the relevant house cusps and planetary periods to provide a clear, realistic timeline answering their question directly.
 3. Root Bottleneck: State the exact planetary placement causing delay or friction.
 4. Prescriptive Guidance & Remedy Lock:
    - State clearly that while planetary cycles test endurance, targeted Lal Kitab remedies systematically redirect this energy.
@@ -115,66 +115,14 @@ FORMAT:
 - Clean paragraphs with bold key phrases.
 - No markdown tables, no pipes (|).`;
 
-    // Direct LLM execution with failover to prevent timeouts
-    let groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${groqKey}`, 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.5,
-        max_tokens: 1200
-      })
-    });
+    // Active production models
+    const activeModels = ['llama-3.1-70b-versatile', 'mixtral-8x7b-32768'];
+    let groqRes = null;
+    let data = null;
 
-    let data = await groqRes.json();
-
-    // Fallback if 70b hits a rate limit or tier mismatch
-    if (!groqRes.ok) {
-      groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${groqKey}`, 
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({
-          model: 'llama3-70b-8192',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.5,
-          max_tokens: 1200
-        })
-      });
-      data = await groqRes.json();
-    }
-
-    if (!groqRes.ok) {
-      return res.status(200).json({ 
-        answer: "ENGINE NOTICE: " + (data?.error?.message || "Could not complete reading at this time.") 
-      });
-    }
-
-    let answer = data.choices?.[0]?.message?.content?.replace(/\|/g, ' ').trim() || "No response generated.";
-    
-    // Programmatic filter to strip any residual disclaimer sentences
-    answer = answer.replace(/Remember,?\s*these remedies are tailored.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Seek guidance from a trusted.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Please note that these remedies are only a starting point.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/not a substitute for expert guidance.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/consult a qualified.*?astrologer.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/consult with an expert.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/consult with a trusted.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Please consult.*?(?=\n|$)/gi, '');
-    answer = answer.trim();
-
-    return res.status(200).json({ 
-      answer,
-      astroContext 
-    });
-
-  } catch (e) {
-    return res.status(200).json({ answer: "Server error handled: " + e.message });
-  }
-}
+    for (const modelId of activeModels) {
+      try {
+        groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer
