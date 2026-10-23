@@ -21,13 +21,12 @@ export async function onRequest(context) {
 
     const name = (body.name || '').trim();
     const gender = body.gender || 'Not specified';
-    const dob = body.dob || '1982-07-23';
-    const tob = body.tob || '06:21';
-    const pob = body.pob || 'Dombivli';
-    const question = body.question || 'Please provide an overview of my current career and life phase.';
+    const dob = body.dob || '';
+    const tob = body.tob || '';
+    const pob = body.pob || '';
+    const question = body.question || 'Please provide an overview of my current planetary phase and guidance.';
     const language = body.language || 'english';
     const unlockedRemedy = body.unlockedRemedy || false;
-    const cachedAstroContext = body.cachedAstroContext || null;
 
     const groqKey = env.GROQ_API_KEY;
     if (!groqKey) {
@@ -37,43 +36,25 @@ export async function onRequest(context) {
       );
     }
 
-    let day = '23', month = '07', year = '1982';
-    if (dob && dob.includes('-')) {
-      const parts = dob.split('-');
-      year = parts[0];
-      month = parts[1].padStart(2, '0');
-      day = parts[2].padStart(2, '0');
-    }
-    const formattedDate = `${day}/${month}/${year}`;
-
-    let formattedTime = '06:21';
-    if (tob && tob.includes(':')) {
-      const tparts = tob.split(':');
-      formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
-    }
-
-    const astroContext = cachedAstroContext || 
-      `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
-
     const clientSalutation = name ? `Dear ${name}` : 'Namaste';
 
-    const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
+    const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound mastery of Krishnamurti Paddhati (KP) Cuspal Sub-Lords, Vimshottari Dasha, and classical Lal Kitab remedies.
 
-VERIFIED ASTRONOMICAL GROUND TRUTH:
-${astroContext}
-
-CLIENT PROFILE:
+CLIENT DETAILS:
 - Full Name: ${name || 'Seeker'}
 - Gender: ${gender}
-- Date of Birth: ${dob} (${formattedDate})
-- Time of Birth: ${tob} (${formattedTime})
+- Date of Birth: ${dob}
+- Time of Birth: ${tob}
 - Place of Birth: ${pob}
 - Client Question: "${question}"
 - Output Language: ${language}
 
+ASTRONOMICAL TASK:
+Calculate the Vedic Ascendant (Lagna), Moon sign (Rashi), Nakshatra, and current Vimshottari Mahadasha/Antardasha based on the exact Date of Birth (${dob}), Time of Birth (${tob}), and Place (${pob}) provided. Ground all interpretations specifically in this calculated chart.
+
 STRICT CONSTRAINTS:
 1. Always open your reading addressing the client personally and respectfully by their name (e.g., "${clientSalutation}, ...").
-2. Speak with calm, definitive authority, accounting for their personal context and gender dynamics respectfully where applicable.
+2. Speak with calm, definitive authority, tailoring insights to their unique birth details and question.
 3. Do not include meta-disclaimers like "consult an astrologer" or "not a substitute for professional advice".
 4. Never quote consultation fees or offer private sessions.
 
@@ -81,14 +62,14 @@ ${
   unlockedRemedy
     ? `PAID REMEDY MODE:
 Provide the 9-WEEK LAL KITAB REMEDY PROTOCOL for ${name || 'the seeker'}:
-1. Identify the root planetary friction.
-2. Detail the exact weekly schedule with 2-3 specific non-commercial remedies.
+1. Identify the root planetary friction causing obstacles in their query.
+2. Detail an exact 9-week schedule with 2-3 specific non-commercial remedies.
 3. Outline behavioral guidelines during this period.
 Ensure the entire 9-week protocol is fully written out to completion.`
     : `FREE DIAGNOSIS MODE:
-1. Address ${name || 'the seeker'} directly and outline the Vedic chart foundations for this question.
+1. Address ${name || 'the seeker'} directly and outline their core Vedic chart foundations (Lagna, Moon Sign, Key Planets).
 2. Provide timing and KP analysis directly answering their query.
-3. Identify the planetary bottleneck.
+3. Identify the planetary bottleneck holding them back.
 4. Conclude with this exact sentence:
 "To harmonize these planetary currents, you can unlock your personalized 9-Week Lal Kitab Remedial Protocol below with a sacred Dakshina of ₹21."`
 }
@@ -103,8 +84,8 @@ FORMAT:
       max_tokens: 2500
     };
 
-    const groqEndpoint = 'https://api.groq.com/openai/v1/chat/completions';
-    const groqResponse = await fetch(groqEndpoint, {
+    const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+    const groqResponse = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${groqKey}`,
@@ -143,10 +124,7 @@ FORMAT:
     answer = answer.replace(/Please consult.*?(?=\n|$)/gi, '').trim();
 
     return new Response(
-      JSON.stringify({
-        answer: answer,
-        astroContext: astroContext
-      }),
+      JSON.stringify({ answer }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
 
