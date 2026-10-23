@@ -89,7 +89,7 @@ FORMAT:
 - Clean paragraphs with bold key phrases. No markdown tables.`;
 
     const groqPayload = {
-      model: 'llama-3.1-8b-instant',
+      model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.5,
       max_tokens: 800
