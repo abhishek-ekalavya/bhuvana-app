@@ -76,7 +76,8 @@ ${
 Provide the 9-WEEK LAL KITAB REMEDY PROTOCOL:
 1. Identify the root planetary friction.
 2. Detail the exact weekly schedule with 2-3 specific non-commercial remedies.
-3. Outline behavioral guidelines during this period.`
+3. Outline behavioral guidelines during this period.
+Ensure the entire 9-week protocol is fully written out to completion.`
     : `FREE DIAGNOSIS MODE:
 1. Outline the Vedic chart foundations for this question.
 2. Provide timing and KP analysis directly answering their query.
@@ -92,7 +93,7 @@ FORMAT:
       model: 'qwen/qwen3.8-27b',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.5,
-      max_tokens: 800
+      max_tokens: 2500
     };
 
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
