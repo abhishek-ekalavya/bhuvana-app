@@ -3,242 +3,244 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bhuvana - Vedic & KP Astrological Guidance</title>
+  <title>Bhuvana - Authentic Vedic & KP Astrology</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #fdfbf7;
+      --primary: #6c2b18;
+      --primary-hover: #542112;
+      --accent: #c4823f;
+      --bg: #faf6f0;
       --card-bg: #ffffff;
-      --primary: #8b4513;
-      --primary-hover: #6d360f;
-      --accent: #b8860b;
-      --text-main: #2b2b2b;
-      --text-muted: #666666;
-      --border-color: #e5dec9;
-      --highlight-bg: #fffbf0;
-      --highlight-border: #d4a373;
+      --text: #2d2421;
+      --text-muted: #6b5c57;
+      --border: #e8ded4;
+      --gold-box: #fcf8f2;
+      --gold-border: #d4a373;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     body {
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      padding: 20px 16px;
-      display: flex;
-      justify-content: center;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 20px 16px 60px;
     }
 
     .container {
-      width: 100%;
-      max-width: 480px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+      max-width: 580px;
+      margin: 0 auto;
     }
 
     header {
       text-align: center;
-      margin-bottom: 5px;
+      margin-bottom: 24px;
     }
 
-    .logo {
-      font-size: 2.2rem;
-      margin-bottom: 4px;
-      display: inline-block;
-    }
-
-    h1 {
-      font-size: 1.5rem;
+    header h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 28px;
       color: var(--primary);
       letter-spacing: 1px;
-      text-transform: uppercase;
-      font-weight: 800;
+      margin-bottom: 6px;
     }
 
-    .subheading {
-      font-size: 0.85rem;
+    header p {
       color: var(--text-muted);
-      margin-top: 4px;
-      font-weight: 500;
+      font-size: 14px;
     }
 
-    .app-card {
+    .card {
       background: var(--card-bg);
-      border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 20px 18px;
-      box-shadow: 0 4px 12px rgba(139, 69, 19, 0.05);
+      border: 1px solid var(--border);
+      padding: 24px 20px;
+      box-shadow: 0 4px 16px rgba(108, 43, 24, 0.05);
+      margin-bottom: 24px;
     }
 
     .form-group {
-      margin-bottom: 16px;
+      margin-bottom: 18px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .form-row .form-group {
+      flex: 1;
     }
 
     label {
       display: block;
-      font-size: 0.75rem;
+      font-size: 11px;
       font-weight: 700;
-      color: var(--primary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      color: var(--primary);
       margin-bottom: 6px;
     }
 
     input, select, textarea {
       width: 100%;
       padding: 12px 14px;
-      border: 1px solid var(--border-color);
+      font-size: 15px;
+      color: var(--text);
+      background: #fff;
+      border: 1px solid var(--border);
       border-radius: 8px;
-      background: #fafafa;
-      font-size: 0.95rem;
-      color: var(--text-main);
-      transition: all 0.2s ease;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.2s;
     }
 
     input:focus, select:focus, textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-      background: #ffffff;
-      box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.1);
+      border-color: var(--accent);
     }
 
     textarea {
+      min-height: 90px;
       resize: vertical;
-      min-height: 85px;
     }
 
-    .btn-submit {
+    .btn-primary {
       width: 100%;
       background: var(--primary);
-      color: #ffffff;
+      color: #fff;
       border: none;
       padding: 14px;
       border-radius: 8px;
-      font-size: 0.95rem;
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: 1px;
       text-transform: uppercase;
+      letter-spacing: 1px;
       cursor: pointer;
-      transition: background 0.2s ease;
-      margin-top: 6px;
+      transition: background 0.2s;
+      margin-top: 8px;
     }
 
-    .btn-submit:hover:not(:disabled) {
+    .btn-primary:hover {
       background: var(--primary-hover);
     }
 
-    .btn-submit:disabled {
-      background: #c5a894;
+    .btn-primary:disabled {
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
-    #resultCard {
+    .results-card {
       display: none;
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 24px 20px;
+      box-shadow: 0 4px 16px rgba(108, 43, 24, 0.05);
     }
 
-    .result-header {
+    .results-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
     }
 
-    .result-title {
-      font-size: 1.05rem;
-      font-weight: 700;
+    .results-title {
+      font-family: 'Cinzel', serif;
+      font-size: 18px;
       color: var(--primary);
-    }
-
-    .font-controls {
-      display: flex;
-      gap: 6px;
-    }
-
-    .btn-font {
-      background: #ffffff;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 0.8rem;
       font-weight: 700;
+    }
+
+    .font-controls button {
+      background: #f0eae1;
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
       cursor: pointer;
-      color: var(--text-main);
+      margin-left: 4px;
     }
 
-    .btn-font:hover {
-      background: #f5f5f5;
-    }
-
-    #resultContent {
-      font-size: 0.95rem;
-      line-height: 1.65;
-      color: #333333;
+    .reading-content {
+      font-size: 15px;
+      color: var(--text);
+      line-height: 1.7;
       white-space: pre-wrap;
-      word-wrap: break-word;
+      margin-bottom: 24px;
     }
 
     .remedy-box {
-      margin-top: 18px;
-      background: var(--highlight-bg);
-      border: 1.5px dashed var(--highlight-border);
+      background: var(--gold-box);
+      border: 1px dashed var(--gold-border);
       border-radius: 10px;
-      padding: 16px;
+      padding: 20px;
       text-align: center;
     }
 
-    .remedy-box h3 {
-      font-size: 0.95rem;
+    .remedy-title {
+      font-size: 16px;
+      font-weight: 700;
       color: var(--primary);
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
     }
 
-    .remedy-box p {
-      font-size: 0.8rem;
-      color: #555555;
-      line-height: 1.45;
-      margin-bottom: 12px;
+    .remedy-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
     }
 
     .btn-remedy {
       width: 100%;
-      background: #c67d00;
-      color: #ffffff;
+      background: var(--accent);
+      color: #fff;
       border: none;
-      padding: 12px;
+      padding: 13px;
       border-radius: 8px;
-      font-size: 0.85rem;
+      font-size: 13px;
       font-weight: 700;
-      letter-spacing: 0.5px;
       text-transform: uppercase;
+      letter-spacing: 0.8px;
       cursor: pointer;
-      transition: background 0.2s ease;
+      transition: background 0.2s;
     }
 
-    .btn-remedy:hover:not(:disabled) {
-      background: #a66800;
+    .btn-remedy:hover {
+      background: #b07030;
     }
 
-    .loading-spinner {
+    .loading {
+      text-align: center;
+      padding: 24px 0;
+      display: none;
+    }
+
+    .spinner {
       display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
+      width: 30px;
+      height: 30px;
+      border: 3px solid rgba(108, 43, 24, 0.2);
       border-radius: 50%;
-      border-top-color: #ffffff;
+      border-top-color: var(--primary);
       animation: spin 0.8s ease-in-out infinite;
-      margin-right: 8px;
-      vertical-align: middle;
     }
 
     @keyframes spin {
@@ -250,183 +252,167 @@
 
   <div class="container">
     <header>
-      <div class="logo">🔮</div>
       <h1>BHUVANA</h1>
-      <div class="subheading">Vedic & KP Astrological Guidance</div>
-      <div style="font-size: 0.72rem; color: #8c827a; margin-top: 2px;">Krishnamurti Paddhati Cuspal Sub-Lords • Lal Kitab Protocols</div>
+      <p>KP & Vedic Astrological Consultation</p>
     </header>
 
-    <div class="app-card">
-      <form id="astroForm">
-        <div class="form-group">
-          <label for="dob">Date of Birth</label>
-          <input type="date" id="dob" required value="1982-07-23">
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+          <label for="fullName">Your Full Name</label>
+          <input type="text" id="fullName" placeholder="e.g. Abhishek Bhowmick" value="Abhishek Bhowmick">
         </div>
-
-        <div class="form-group">
-          <label for="tob">Exact Time of Birth</label>
-          <input type="time" id="tob" required value="06:21">
-        </div>
-
-        <div class="form-group">
-          <label for="pob">Place of Birth (City, State / Country)</label>
-          <input type="text" id="pob" placeholder="e.g. Dombivli" required value="Dombivli">
-        </div>
-
-        <div class="form-group">
-          <label for="language">Preferred Language</label>
-          <select id="language">
-            <option value="english" selected>English (Detailed Astrological Guidance)</option>
-            <option value="hindi">Hindi (शुद्ध हिंदी)</option>
-            <option value="hinglish">Hinglish (Conversational)</option>
+        <div class="form-group" style="flex: 1.2;">
+          <label for="gender">Gender</label>
+          <select id="gender">
+            <option value="Male" selected>Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
           </select>
-        </div>
-
-        <div class="form-group">
-          <label for="question">Your Question</label>
-          <textarea id="question" placeholder="Ask about career timing, finances, marriage, health, or family..." required>In 2020 I lost my well paying job and post that I have only been doing side hustles and my income took a hit. I lost all my savings. Now I have started Ekalavya Consulting. When will I get my first client and start making a lot of money?</textarea>
-        </div>
-
-        <button type="submit" id="btnSubmit" class="btn-submit">Get Authentic Reading</button>
-      </form>
-    </div>
-
-    <div class="app-card" id="resultCard">
-      <div class="result-header">
-        <div class="result-title">Kundali Vachan & Guidance</div>
-        <div class="font-controls">
-          <button type="button" class="btn-font" id="btnFontPlus">A+</button>
-          <button type="button" class="btn-font" id="btnFontMinus">A-</button>
         </div>
       </div>
 
-      <div id="resultContent"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="dob">Date of Birth</label>
+          <input type="date" id="dob" value="1982-07-23">
+        </div>
+        <div class="form-group">
+          <label for="tob">Exact Time of Birth</label>
+          <input type="time" id="tob" value="06:21">
+        </div>
+      </div>
 
-      <div class="remedy-box" id="remedyBox">
-        <h3>🕉️ Unlock Your 9-Week Lal Kitab Remedial Protocol</h3>
-        <p>Neutralize the planetary friction pinpointed in your reading. Receive the exact day-wise schedule, symbolic totkas, and daily disciplines mapped to your chart.</p>
-        <button type="button" class="btn-remedy" id="btnUnlockRemedy">Unlock Remedy Protocol (₹21 Dakshina)</button>
+      <div class="form-group">
+        <label for="pob">Place of Birth (City, State / Country)</label>
+        <input type="text" id="pob" placeholder="e.g. Dombivli, Maharashtra" value="Dombivli">
+      </div>
+
+      <div class="form-group">
+        <label for="language">Preferred Language</label>
+        <select id="language">
+          <option value="english">English (Detailed Astrological Guidance)</option>
+          <option value="hindi">Hindi (हिंदी)</option>
+          <option value="marathi">Marathi (मराठी)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="question">Your Question</label>
+        <textarea id="question" placeholder="Ask about career, finances, timing, or life crossroads...">In 2020 I lost my well paying job and post that I have only been doing side hustles and my income took a hit. I lost all my savings. Now I have started Ekalavya Consulting. When will I get my first client and start making a lot of money?</textarea>
+      </div>
+
+      <button id="btnSubmit" class="btn-primary" onclick="submitReading(false)">Get Authentic Reading</button>
+      
+      <div id="loader" class="loading">
+        <div class="spinner"></div>
+        <p style="margin-top: 8px; font-size: 13px; color: var(--text-muted);">Consulting ephemeris & KP cusps...</p>
+      </div>
+    </div>
+
+    <div id="resultsCard" class="results-card">
+      <div class="results-header">
+        <div class="results-title">Kundali Vachan & Guidance</div>
+        <div class="font-controls">
+          <button onclick="changeFontSize(1)">A+</button>
+          <button onclick="changeFontSize(-1)">A-</button>
+        </div>
+      </div>
+
+      <div id="readingText" class="reading-content"></div>
+
+      <div id="remedyBox" class="remedy-box">
+        <div class="remedy-title">
+          <span>🕉️</span> Unlock Your 9-Week Lal Kitab Remedial Protocol
+        </div>
+        <p class="remedy-desc">
+          Neutralize the planetary friction pinpointed in your reading. Receive the exact day-wise schedule, symbolic totkas, and daily disciplines mapped to your chart.
+        </p>
+        <button id="btnUnlockRemedy" class="btn-remedy" onclick="submitReading(true)">
+          Unlock Remedy Protocol (₹21 Dakshina)
+        </button>
       </div>
     </div>
   </div>
 
   <script>
-    const astroForm = document.getElementById('astroForm');
-    const dobInput = document.getElementById('dob');
-    const tobInput = document.getElementById('tob');
-    const pobInput = document.getElementById('pob');
-    const langSelect = document.getElementById('language');
-    const questionInput = document.getElementById('question');
-    const btnSubmit = document.getElementById('btnSubmit');
-    
-    const resultCard = document.getElementById('resultCard');
-    const resultContent = document.getElementById('resultContent');
-    const btnUnlockRemedy = document.getElementById('btnUnlockRemedy');
-    const remedyBox = document.getElementById('remedyBox');
-    const btnFontPlus = document.getElementById('btnFontPlus');
-    const btnFontMinus = document.getElementById('btnFontMinus');
+    let currentFontSize = 15;
+    let savedAstroContext = null;
 
-    let currentFontSize = 0.95;
+    function changeFontSize(delta) {
+      currentFontSize = Math.min(Math.max(currentFontSize + delta, 12), 22);
+      document.getElementById('readingText').style.fontSize = currentFontSize + 'px';
+    }
 
-    // Reset cached chart whenever the user changes core birth parameters
-    [dobInput, tobInput, pobInput].forEach(elem => {
-      elem.addEventListener('change', () => {
-        sessionStorage.removeItem('bhuvana_cached_astro_context');
-      });
-    });
+    function formatMarkdown(text) {
+      return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    }
 
-    // Font scaling
-    btnFontPlus.addEventListener('click', () => {
-      if (currentFontSize < 1.4) {
-        currentFontSize += 0.08;
-        resultContent.style.fontSize = `${currentFontSize}rem`;
-      }
-    });
+    async function submitReading(isRemedyUnlocked = false) {
+      const btnSubmit = document.getElementById('btnSubmit');
+      const btnRemedy = document.getElementById('btnUnlockRemedy');
+      const loader = document.getElementById('loader');
+      const resultsCard = document.getElementById('resultsCard');
+      const readingText = document.getElementById('readingText');
+      const remedyBox = document.getElementById('remedyBox');
 
-    btnFontMinus.addEventListener('click', () => {
-      if (currentFontSize > 0.8) {
-        currentFontSize -= 0.08;
-        resultContent.style.fontSize = `${currentFontSize}rem`;
-      }
-    });
+      const name = document.getElementById('fullName').value.trim();
+      const gender = document.getElementById('gender').value;
+      const dob = document.getElementById('dob').value;
+      const tob = document.getElementById('tob').value;
+      const pob = document.getElementById('pob').value;
+      const language = document.getElementById('language').value;
+      const question = document.getElementById('question').value;
 
-    // Main Submission
-    astroForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      await fetchReading(false);
-    });
-
-    // Remedy Unlock Submission (₹21 Dakshina mode)
-    btnUnlockRemedy.addEventListener('click', async () => {
-      await fetchReading(true);
-    });
-
-    async function fetchReading(isRemedyUnlocked) {
-      const activeBtn = isRemedyUnlocked ? btnUnlockRemedy : btnSubmit;
-      const originalText = activeBtn.innerHTML;
-
-      activeBtn.disabled = true;
-      activeBtn.innerHTML = `<span class="loading-spinner"></span> Consulting Chart...`;
-
-      resultCard.style.display = 'block';
-      resultContent.style.color = '#777777';
-      resultContent.innerHTML = 'Connecting with astronomical ephemeris and planetary cuspal alignments...';
-
-      // Pull cached chart context from session if available (Preserves 1 credit per session)
-      const cachedContext = sessionStorage.getItem('bhuvana_cached_astro_context');
-
-      const payload = {
-        dob: dobInput.value,
-        tob: tobInput.value,
-        pob: pobInput.value,
-        language: langSelect.value,
-        question: questionInput.value,
-        unlockedRemedy: isRemedyUnlocked,
-        cachedAstroContext: cachedContext
-      };
+      btnSubmit.disabled = true;
+      if (btnRemedy) btnRemedy.disabled = true;
+      loader.style.display = 'block';
 
       try {
-        const response = await fetch('/api/chat', {
+        const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            name,
+            gender,
+            dob,
+            tob,
+            pob,
+            language,
+            question,
+            unlockedRemedy: isRemedyUnlocked,
+            cachedAstroContext: savedAstroContext
+          })
         });
 
-        const textResponse = await response.text();
-        let data;
-        try {
-          data = JSON.parse(textResponse);
-        } catch (err) {
-          throw new Error("Invalid response from server: " + textResponse.slice(0, 150));
-        }
+        const data = await res.json();
+        loader.style.display = 'none';
+        btnSubmit.disabled = false;
+        if (btnRemedy) btnRemedy.disabled = false;
 
         if (data.answer) {
-          resultContent.style.color = '#2b2b2b';
-          resultContent.innerHTML = data.answer;
+          readingText.innerHTML = formatMarkdown(data.answer);
+          resultsCard.style.display = 'block';
 
-          // Lock in chart context so all subsequent questions consume 0 Vedic API credits
           if (data.astroContext) {
-            sessionStorage.setItem('bhuvana_cached_astro_context', data.astroContext);
+            savedAstroContext = data.astroContext;
           }
 
           if (isRemedyUnlocked) {
             remedyBox.style.display = 'none';
-          } else {
-            remedyBox.style.display = 'block';
           }
 
-          // Smooth scroll to reading
-          resultCard.scrollIntoView({ behavior: 'smooth' });
+          resultsCard.scrollIntoView({ behavior: 'smooth' });
         } else {
-          resultContent.style.color = '#b00020';
-          resultContent.innerHTML = "ENGINE NOTICE: " + (data.error || "Unable to retrieve interpretation.");
+          readingText.innerHTML = '<span style="color: #b00020;">Unable to load reading. Please try again.</span>';
+          resultsCard.style.display = 'block';
         }
       } catch (err) {
-        resultContent.style.color = '#b00020';
-        resultContent.innerHTML = "Error connecting to engine: " + err.message;
-      } finally {
-        activeBtn.disabled = false;
-        activeBtn.innerHTML = originalText;
+        loader.style.display = 'none';
+        btnSubmit.disabled = false;
+        if (btnRemedy) btnRemedy.disabled = false;
+        readingText.innerHTML = '<span style="color: #b00020;">Connection error: ' + err.message + '</span>';
+        resultsCard.style.display = 'block';
       }
     }
   </script>
