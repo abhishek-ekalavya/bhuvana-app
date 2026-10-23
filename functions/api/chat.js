@@ -19,6 +19,8 @@ export async function onRequest(context) {
       body = {};
     }
 
+    const name = (body.name || '').trim();
+    const gender = body.gender || 'Not specified';
     const dob = body.dob || '1982-07-23';
     const tob = body.tob || '06:21';
     const pob = body.pob || 'Dombivli';
@@ -53,12 +55,16 @@ export async function onRequest(context) {
     const astroContext = cachedAstroContext || 
       `ASTRONOMICAL DATA: Ascendant (Lagna) in Cancer (Karka); Moon in Leo (Simha) in Magha Nakshatra; Sun & Mercury in Cancer (1st House); Saturn & Mars in Virgo (3rd House); Jupiter in Libra (4th House); Venus & Rahu in Gemini (12th House); Ketu in Sagittarius (6th House).`;
 
+    const clientSalutation = name ? `Dear ${name}` : 'Namaste';
+
     const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords and practical Lal Kitab remedies.
 
 VERIFIED ASTRONOMICAL GROUND TRUTH:
 ${astroContext}
 
-CLIENT DETAILS:
+CLIENT PROFILE:
+- Full Name: ${name || 'Seeker'}
+- Gender: ${gender}
 - Date of Birth: ${dob} (${formattedDate})
 - Time of Birth: ${tob} (${formattedTime})
 - Place of Birth: ${pob}
@@ -66,20 +72,21 @@ CLIENT DETAILS:
 - Output Language: ${language}
 
 STRICT CONSTRAINTS:
-1. Speak with calm, definitive authority.
-2. Do not include meta-disclaimers like "consult an astrologer" or "not a substitute for professional advice".
-3. Never quote consultation fees or offer private sessions.
+1. Always open your reading addressing the client personally and respectfully by their name (e.g., "${clientSalutation}, ...").
+2. Speak with calm, definitive authority, accounting for their personal context and gender dynamics respectfully where applicable.
+3. Do not include meta-disclaimers like "consult an astrologer" or "not a substitute for professional advice".
+4. Never quote consultation fees or offer private sessions.
 
 ${
   unlockedRemedy
     ? `PAID REMEDY MODE:
-Provide the 9-WEEK LAL KITAB REMEDY PROTOCOL:
+Provide the 9-WEEK LAL KITAB REMEDY PROTOCOL for ${name || 'the seeker'}:
 1. Identify the root planetary friction.
 2. Detail the exact weekly schedule with 2-3 specific non-commercial remedies.
 3. Outline behavioral guidelines during this period.
 Ensure the entire 9-week protocol is fully written out to completion.`
     : `FREE DIAGNOSIS MODE:
-1. Outline the Vedic chart foundations for this question.
+1. Address ${name || 'the seeker'} directly and outline the Vedic chart foundations for this question.
 2. Provide timing and KP analysis directly answering their query.
 3. Identify the planetary bottleneck.
 4. Conclude with this exact sentence:
@@ -96,58 +103,4 @@ FORMAT:
       max_tokens: 2500
     };
 
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(groqPayload)
-    });
-
-    const responseText = await groqResponse.text();
-    let groqData;
-    try {
-      groqData = JSON.parse(responseText);
-    } catch (parseErr) {
-      return new Response(
-        JSON.stringify({ answer: "RAW GROQ ERROR (" + groqResponse.status + "): " + responseText.slice(0, 300) }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-
-    if (!groqResponse.ok || !groqData || !groqData.choices || !groqData.choices.length) {
-      const errDetail = groqData && groqData.error ? (groqData.error.message || JSON.stringify(groqData.error)) : responseText.slice(0, 300);
-      return new Response(
-        JSON.stringify({ answer: "GROQ API REJECTED (" + groqResponse.status + "): " + errDetail }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-
-    let answer = groqData.choices[0].message.content.trim();
-    
-    // Clean disclaimers
-    answer = answer.replace(/Remember,?\s*these remedies are tailored.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Seek guidance from a trusted.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/not a substitute for expert guidance.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/consult a qualified.*?astrologer.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/consult with an expert.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Please consult.*?(?=\n|$)/gi, '').trim();
-
-    return new Response(
-      JSON.stringify({
-        answer: answer,
-        astroContext: astroContext
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    );
-
-  } catch (err) {
-    return new Response(
-      JSON.stringify({
-        answer: "CLOUDFLARE FUNCTION EXCEPTION: " + err.message
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    );
-  }
-}
+    const groqResponse = await fetch('
