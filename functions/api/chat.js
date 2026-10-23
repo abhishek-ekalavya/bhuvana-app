@@ -30,7 +30,7 @@ export async function onRequest(context) {
     const groqKey = env.GROQ_API_KEY;
     if (!groqKey) {
       return new Response(
-        JSON.stringify({ answer: "SETUP ERROR: GROQ_API_KEY is not configured in Cloudflare Pages." }),
+        JSON.stringify({ answer: "CONFIG ERROR: GROQ_API_KEY environment variable is missing in Cloudflare." }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
@@ -89,7 +89,7 @@ FORMAT:
 - Clean paragraphs with bold key phrases. No markdown tables.`;
 
     const groqPayload = {
-      model: 'openai/gpt-oss-120b',
+      model: 'qwen/qwen3.8-27b',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.5,
       max_tokens: 800
@@ -104,13 +104,21 @@ FORMAT:
       body: JSON.stringify(groqPayload)
     });
 
-    const groqData = await groqResponse.json();
-
-    if (!groqResponse.ok || !groqData || !groqData.choices) {
+    const responseText = await groqResponse.text();
+    let groqData;
+    try {
+      groqData = JSON.parse(responseText);
+    } catch (parseErr) {
       return new Response(
-        JSON.stringify({
-          answer: "ENGINE NOTICE: " + (groqData && groqData.error ? groqData.error.message : "Service busy. Please try again.")
-        }),
+        JSON.stringify({ answer: "RAW GROQ ERROR (" + groqResponse.status + "): " + responseText.slice(0, 300) }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    if (!groqResponse.ok || !groqData || !groqData.choices || !groqData.choices.length) {
+      const errDetail = groqData && groqData.error ? (groqData.error.message || JSON.stringify(groqData.error)) : responseText.slice(0, 300);
+      return new Response(
+        JSON.stringify({ answer: "GROQ API REJECTED (" + groqResponse.status + "): " + errDetail }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
@@ -136,7 +144,7 @@ FORMAT:
   } catch (err) {
     return new Response(
       JSON.stringify({
-        answer: "Server error handled: " + err.message
+        answer: "CLOUDFLARE FUNCTION EXCEPTION: " + err.message
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
