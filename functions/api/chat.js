@@ -103,4 +103,59 @@ FORMAT:
       max_tokens: 2500
     };
 
-    const groqResponse = await fetch('
+    const groqEndpoint = 'https://api.groq.com/openai/v1/chat/completions';
+    const groqResponse = await fetch(groqEndpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${groqKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(groqPayload)
+    });
+
+    const responseText = await groqResponse.text();
+    let groqData;
+    try {
+      groqData = JSON.parse(responseText);
+    } catch (parseErr) {
+      return new Response(
+        JSON.stringify({ answer: "RAW GROQ ERROR (" + groqResponse.status + "): " + responseText.slice(0, 300) }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    if (!groqResponse.ok || !groqData || !groqData.choices || !groqData.choices.length) {
+      const errDetail = groqData && groqData.error ? (groqData.error.message || JSON.stringify(groqData.error)) : responseText.slice(0, 300);
+      return new Response(
+        JSON.stringify({ answer: "GROQ API REJECTED (" + groqResponse.status + "): " + errDetail }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    let answer = groqData.choices[0].message.content.trim();
+    
+    // Clean disclaimers
+    answer = answer.replace(/Remember,?\s*these remedies are tailored.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/Seek guidance from a trusted.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/not a substitute for expert guidance.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/consult a qualified.*?astrologer.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/consult with an expert.*?(?=\n|$)/gi, '');
+    answer = answer.replace(/Please consult.*?(?=\n|$)/gi, '').trim();
+
+    return new Response(
+      JSON.stringify({
+        answer: answer,
+        astroContext: astroContext
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    );
+
+  } catch (err) {
+    return new Response(
+      JSON.stringify({
+        answer: "CLOUDFLARE FUNCTION EXCEPTION: " + err.message
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    );
+  }
+}
