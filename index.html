@@ -260,12 +260,12 @@
       <div class="form-row">
         <div class="form-group" style="flex: 2;">
           <label for="fullName">Your Full Name</label>
-          <input type="text" id="fullName" placeholder="e.g. Abhishek Bhowmick" value="Abhishek Bhowmick">
+          <input type="text" id="fullName" placeholder="Enter your full name" required>
         </div>
         <div class="form-group" style="flex: 1.2;">
           <label for="gender">Gender</label>
           <select id="gender">
-            <option value="Male" selected>Male</option>
+            <option value="Male">Male</option>
             <option value="Female">Female</option>
             <option value="Other">Other</option>
           </select>
@@ -275,17 +275,17 @@
       <div class="form-row">
         <div class="form-group">
           <label for="dob">Date of Birth</label>
-          <input type="date" id="dob" value="1982-07-23">
+          <input type="date" id="dob" required>
         </div>
         <div class="form-group">
           <label for="tob">Exact Time of Birth</label>
-          <input type="time" id="tob" value="06:21">
+          <input type="time" id="tob" required>
         </div>
       </div>
 
       <div class="form-group">
         <label for="pob">Place of Birth (City, State / Country)</label>
-        <input type="text" id="pob" placeholder="e.g. Dombivli, Maharashtra" value="Dombivli">
+        <input type="text" id="pob" placeholder="e.g. Mumbai, Maharashtra" required>
       </div>
 
       <div class="form-group">
@@ -299,7 +299,7 @@
 
       <div class="form-group">
         <label for="question">Your Question</label>
-        <textarea id="question" placeholder="Ask about career, finances, timing, or life crossroads...">In 2020 I lost my well paying job and post that I have only been doing side hustles and my income took a hit. I lost all my savings. Now I have started Ekalavya Consulting. When will I get my first client and start making a lot of money?</textarea>
+        <textarea id="question" placeholder="Ask about career, finances, business timing, relationships, or life crossroads..."></textarea>
       </div>
 
       <button id="btnSubmit" class="btn-primary" onclick="submitReading(false)">Get Authentic Reading</button>
@@ -337,7 +337,6 @@
 
   <script>
     let currentFontSize = 15;
-    let savedAstroContext = null;
 
     function changeFontSize(delta) {
       currentFontSize = Math.min(Math.max(currentFontSize + delta, 12), 22);
@@ -349,20 +348,29 @@
     }
 
     async function submitReading(isRemedyUnlocked = false) {
+      const name = document.getElementById('fullName').value.trim();
+      const dob = document.getElementById('dob').value;
+      const tob = document.getElementById('tob').value;
+      const pob = document.getElementById('pob').value.trim();
+      const question = document.getElementById('question').value.trim();
+
+      if (!name) {
+        alert("Please enter your name.");
+        return;
+      }
+      if (!dob || !tob || !pob) {
+        alert("Please provide complete birth details (Date, Time, and Place of Birth).");
+        return;
+      }
+
       const btnSubmit = document.getElementById('btnSubmit');
       const btnRemedy = document.getElementById('btnUnlockRemedy');
       const loader = document.getElementById('loader');
       const resultsCard = document.getElementById('resultsCard');
       const readingText = document.getElementById('readingText');
       const remedyBox = document.getElementById('remedyBox');
-
-      const name = document.getElementById('fullName').value.trim();
       const gender = document.getElementById('gender').value;
-      const dob = document.getElementById('dob').value;
-      const tob = document.getElementById('tob').value;
-      const pob = document.getElementById('pob').value;
       const language = document.getElementById('language').value;
-      const question = document.getElementById('question').value;
 
       btnSubmit.disabled = true;
       if (btnRemedy) btnRemedy.disabled = true;
@@ -379,9 +387,8 @@
             tob,
             pob,
             language,
-            question,
-            unlockedRemedy: isRemedyUnlocked,
-            cachedAstroContext: savedAstroContext
+            question: question || "Please provide an overview of my current planetary phase and life path.",
+            unlockedRemedy: isRemedyUnlocked
           })
         });
 
@@ -393,10 +400,6 @@
         if (data.answer) {
           readingText.innerHTML = formatMarkdown(data.answer);
           resultsCard.style.display = 'block';
-
-          if (data.astroContext) {
-            savedAstroContext = data.astroContext;
-          }
 
           if (isRemedyUnlocked) {
             remedyBox.style.display = 'none';
