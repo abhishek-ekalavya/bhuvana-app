@@ -38,7 +38,7 @@ export async function onRequest(context) {
 
     const vedicKey = env.VEDIC_ASTRO_KEY;
 
-    // Convert YYYY-MM-DD to DD/MM/YYYY for Vedic Astro API
+    // Convert YYYY-MM-DD to DD/MM/YYYY
     let day = '23', month = '07', year = '1982';
     if (dob && dob.includes('-')) {
       const parts = dob.split('-');
@@ -63,7 +63,6 @@ export async function onRequest(context) {
         let lon = 73.0867;
         let tz = 5.5;
 
-        // Auto-geocode city if not Dombivli
         const cleanPob = pob.toLowerCase();
         if (!cleanPob.includes('dombivli')) {
           try {
@@ -76,9 +75,7 @@ export async function onRequest(context) {
               lat = parseFloat(geoData[0].lat);
               lon = parseFloat(geoData[0].lon);
             }
-          } catch (e) {
-            // Falls back to standard coordinates
-          }
+          } catch (e) {}
         }
 
         const astroUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?api_key=${vedicKey}&dob=${formattedDate}&tob=${formattedTime}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`;
@@ -104,12 +101,10 @@ export async function onRequest(context) {
             astroContext = `REAL CALCULATED EPHEMERIS GROUND TRUTH:\n` + planetSummary.join('; ');
           }
         }
-      } catch (apiErr) {
-        // Safe failover
-      }
+      } catch (apiErr) {}
     }
 
-    // High-accuracy fallback for Abhishek if API key is not yet configured or fails
+    // High-accuracy fallback for Abhishek: Corrected to Mars Mahadasha
     if (!astroContext) {
       if (year === '1982' && month === '07' && day === '23') {
         astroContext = `REAL CALCULATED EPHEMERIS GROUND TRUTH:
@@ -120,7 +115,7 @@ Mars & Saturn: Virgo (3rd House)
 Jupiter: Libra (4th House)
 Venus & Rahu: Gemini (12th House)
 Ketu: Sagittarius (6th House)
-Current Vimshottari Mahadasha: Saturn (running through 2038)`;
+CURRENT VIMSHOTTARI MAHADASHA: Mars (Mangal) Mahadasha`;
       } else {
         astroContext = `CLIENT BIRTH MOMENT: ${formattedDate} at ${formattedTime} at ${pob}.`;
       }
@@ -144,7 +139,7 @@ CLIENT PROFILE:
 
 STRICT CONSTRAINTS:
 1. Always open your reading addressing the client personally and respectfully by their name (e.g., "${clientSalutation}, ...").
-2. STRICT ACCURACY: You MUST use the exact Ascendant (Lagna), Moon sign, and planetary placements specified in the GROUND TRUTH above. NEVER invent, swap, or guess a different Lagna or Moon.
+2. STRICT ACCURACY: You MUST use the exact Ascendant (Lagna), Moon sign, and CURRENT VIMSHOTTARI MAHADASHA specified in the GROUND TRUTH above. For Abhishek, the Mahadasha is explicitly MARS (MANGAL), NOT Saturn. Never contradict the ground truth.
 3. Speak with calm, definitive authority, tailoring insights directly to their question and chart.
 4. Do not include meta-disclaimers like "consult an astrologer" or "not a substitute for professional advice".
 5. Never quote consultation fees or offer private sessions.
@@ -153,12 +148,12 @@ ${
   unlockedRemedy
     ? `PAID REMEDY MODE:
 Provide the 9-WEEK LAL KITAB REMEDY PROTOCOL for ${name || 'the seeker'}:
-1. Identify the root planetary friction.
+1. Identify the root planetary friction causing obstacles in their query.
 2. Detail an exact 9-week schedule with 2-3 specific non-commercial remedies.
 3. Outline behavioral guidelines during this period.
 Ensure the entire 9-week protocol is fully written out to completion.`
     : `FREE DIAGNOSIS MODE:
-1. Address ${name || 'the seeker'} directly and analyze their verified Vedic chart foundations (verified Lagna, Moon Sign, Key Planets).
+1. Address ${name || 'the seeker'} directly and analyze their verified Vedic chart foundations (verified Lagna, Moon Sign, Key Planets, and active Mahadasha).
 2. Provide timing and KP analysis directly answering their query.
 3. Identify the planetary bottleneck.
 4. Conclude with this exact sentence:
