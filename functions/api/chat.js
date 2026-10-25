@@ -11,6 +11,9 @@ export async function onRequest(context) {
     return new Response(null, { headers: corsHeaders, status: 200 });
   }
 
+  // Graceful client-facing fallback message for any upstream glitch
+  const politeErrorMessage = "Bhuvana is currently aligning planetary ephemeris data. Please refresh or try again in a few moments.";
+
   try {
     let body = {};
     try {
@@ -30,7 +33,7 @@ export async function onRequest(context) {
 
     if (!dob || !tob || !pob) {
       return new Response(
-        JSON.stringify({ answer: "Please provide complete birth details (Date, Time, and Place of Birth)." }),
+        JSON.stringify({ answer: "Please enter your birth date, birth time, and birth place to generate your reading." }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
@@ -38,9 +41,10 @@ export async function onRequest(context) {
     const groqKey = env.GROQ_API_KEY;
     const vedicKey = env.VEDIC_ASTRO_KEY;
 
+    // Fail gracefully without ever revealing variable names or configs
     if (!groqKey || !vedicKey) {
       return new Response(
-        JSON.stringify({ answer: "CONFIGURATION ERROR: Required API keys (GROQ_API_KEY or VEDIC_ASTRO_KEY) are missing in Cloudflare." }),
+        JSON.stringify({ answer: politeErrorMessage }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
@@ -66,7 +70,7 @@ export async function onRequest(context) {
     let lon = 73.0867;
     const tz = 5.5;
 
-    // Direct geocode without messy nested try/catch
+    // Geocoding
     const cleanPob = pob.toLowerCase();
     if (!cleanPob.includes('dombivli')) {
       const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pob)}&format=json&limit=1`;
@@ -118,10 +122,10 @@ export async function onRequest(context) {
       }
     }
 
-    // Strict validation: stop if no ephemeris returned
+    // If ephemeris data could not be computed, fail politely
     if (planetSummary.length === 0) {
       return new Response(
-        JSON.stringify({ answer: "ASTRONOMICAL ENGINE ERROR: Unable to calculate verified planetary positions from ephemeris. Please verify birth details and try again." }),
+        JSON.stringify({ answer: politeErrorMessage }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
@@ -195,22 +199,21 @@ FORMAT:
       groqData = JSON.parse(responseText);
     } catch (parseErr) {
       return new Response(
-        JSON.stringify({ answer: "RAW GROQ ERROR (" + groqResponse.status + "): " + responseText.slice(0, 300) }),
+        JSON.stringify({ answer: politeErrorMessage }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
     if (!groqResponse.ok || !groqData || !groqData.choices || !groqData.choices.length) {
-      const errDetail = groqData && groqData.error ? (groqData.error.message || JSON.stringify(groqData.error)) : responseText.slice(0, 300);
       return new Response(
-        JSON.stringify({ answer: "GROQ API REJECTED (" + groqResponse.status + "): " + errDetail }),
+        JSON.stringify({ answer: politeErrorMessage }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
     let answer = groqData.choices[0].message.content.trim();
 
-    // Clean disclaimers
+    // Clean any lingering disclaimers
     answer = answer.replace(/Remember,?\s*these remedies are tailored.*?(?=\n|$)/gi, '');
     answer = answer.replace(/Seek guidance from a trusted.*?(?=\n|$)/gi, '');
     answer = answer.replace(/not a substitute for expert guidance.*?(?=\n|$)/gi, '');
@@ -225,7 +228,7 @@ FORMAT:
 
   } catch (err) {
     return new Response(
-      JSON.stringify({ answer: "SERVER EXCEPTION: " + err.message }),
+      JSON.stringify({ answer: politeErrorMessage }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
   }
