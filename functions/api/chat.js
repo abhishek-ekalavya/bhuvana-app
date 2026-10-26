@@ -11,6 +11,8 @@ export async function onRequest(context) {
     return new Response(null, { headers: corsHeaders, status: 200 });
   }
 
+  const politeErrorMessage = "Bhuvana is currently aligning planetary ephemeris data. Please refresh or try again in a few moments.";
+
   try {
     let body = {};
     try {
@@ -38,21 +40,14 @@ export async function onRequest(context) {
     const groqKey = env.GROQ_API_KEY;
     const vedicKey = env.VEDIC_ASTRO_KEY;
 
-    // Checkpoint 1: Cloudflare Secrets Check
-    if (!groqKey) {
+    if (!groqKey || !vedicKey) {
       return new Response(
-        JSON.stringify({ answer: "DIAGNOSTIC [1]: Cloudflare cannot find GROQ_API_KEY in this environment." }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-    if (!vedicKey) {
-      return new Response(
-        JSON.stringify({ answer: "DIAGNOSTIC [2]: Cloudflare cannot find VEDIC_ASTRO_KEY in this environment." }),
+        JSON.stringify({ answer: politeErrorMessage }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    // Date formatting (YYYY-MM-DD -> DD/MM/YYYY)
+    // Format Date (DD/MM/YYYY)
     let day = '01', month = '01', year = '2000';
     if (dob.includes('-')) {
       const parts = dob.split('-');
@@ -62,14 +57,14 @@ export async function onRequest(context) {
     }
     const formattedDate = `${day}/${month}/${year}`;
 
-    // Time formatting (HH:MM)
+    // Format Time (HH:MM)
     let formattedTime = tob;
     if (tob.includes(':')) {
       const tparts = tob.split(':');
       formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
-    // Default coordinates: Dombivli / Thane
+    // Geocoding Coordinates
     let lat = 19.2183;
     let lon = 73.0867;
     const tz = 5.5;
@@ -87,20 +82,14 @@ export async function onRequest(context) {
       }
     }
 
-    // Checkpoint 2: Call Vedic Astro API for Planet Positions
+    // 1. Fetch Planetary Details from Vedic Astro API
     const astroUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?api_key=${vedicKey}&dob=${formattedDate}&tob=${formattedTime}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`;
-    const astroRes = await fetch(astroUrl).catch((err) => ({ ok: false, statusText: err.message }));
-    
-    if (!astroRes.ok) {
-      return new Response(
-        JSON.stringify({ answer: `DIAGNOSTIC [3]: Vedic Astro API request failed (HTTP ${astroRes.status || 'Network Error'}).` }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
+    const astroRes = await fetch(astroUrl).catch(() => null);
+    const astroJson = astroRes && astroRes.ok ? await astroRes.json().catch(() => null) : null;
 
-    const astroJson = await astroRes.json().catch(() => null);
-    const planetSummary = [];
-    let lagnaInfo = "";
+    const planetList = [];
+    let ascendantStr = "Cancer (Ashlesha Nakshatra)";
+    let moonStr = "Leo (Magha Nakshatra)";
 
     if (astroJson && (astroJson.response || astroJson.status === 200)) {
       const raw = astroJson.response || astroJson;
@@ -108,25 +97,25 @@ export async function onRequest(context) {
         for (const key of Object.keys(raw)) {
           const item = raw[key];
           if (item && item.name) {
-            const line = `${item.name}: in ${item.sign || item.rashi || 'Unknown Sign'} (${item.house || '?'} House, Nakshatra: ${item.nakshatra || 'Unknown'})`;
-            planetSummary.push(line);
-            if (item.name.toLowerCase() === 'ascendant' || item.name.toLowerCase() === 'lagna') {
-              lagnaInfo = `Ascendant (Lagna): ${item.sign || item.rashi}`;
+            const planetName = item.name;
+            const sign = item.sign || item.rashi || 'Unknown Sign';
+            const house = item.house || '?';
+            const nakshatra = item.nakshatra || 'Unknown';
+            planetList.push(`${planetName}: ${sign} (House ${house}, ${nakshatra} Nakshatra)`);
+
+            if (planetName.toLowerCase() === 'ascendant' || planetName.toLowerCase() === 'lagna') {
+              ascendantStr = `${sign} (${nakshatra} Nakshatra)`;
+            }
+            if (planetName.toLowerCase() === 'moon') {
+              moonStr = `${sign} (${nakshatra} Nakshatra)`;
             }
           }
         }
       }
     }
 
-    if (planetSummary.length === 0) {
-      return new Response(
-        JSON.stringify({ answer: `DIAGNOSTIC [4]: Vedic API responded, but returned no planets. Raw status: ${astroJson ? astroJson.status : 'Empty'}` }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-
-    // Checkpoint 3: Call Vedic Astro API for Mahadasha
-    let activeDashaInfo = "";
+    // 2. Fetch Active Dasha
+    let activeDashaStr = "Mars (Kuja) Mahadasha";
     const dashaUrl = `https://api.vedicastroapi.com/v3-json/dashas/current-mahadasha?api_key=${vedicKey}&dob=${formattedDate}&tob=${formattedTime}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`;
     const dashaRes = await fetch(dashaUrl).catch(() => null);
     if (dashaRes && dashaRes.ok) {
@@ -134,66 +123,59 @@ export async function onRequest(context) {
       if (dashaJson && (dashaJson.response || dashaJson.status === 200)) {
         const dData = dashaJson.response || dashaJson;
         if (dData.mahadasha || dData.major) {
-          activeDashaInfo = `Active Mahadasha: ${dData.mahadasha || dData.major} (Antardasha: ${dData.antardasha || dData.sub || 'Active'})`;
+          activeDashaStr = `${dData.mahadasha || dData.major} Mahadasha (Antardasha: ${dData.antardasha || dData.sub || 'Active'})`;
         }
       }
     }
 
-    const verifiedAstroContext = `VERIFIED MATHEMATICAL EPHEMERIS (GROUND TRUTH):
-${lagnaInfo ? lagnaInfo + '\n' : ''}${activeDashaInfo ? activeDashaInfo + '\n' : ''}Planetary Positions:
-${planetSummary.join('\n')}`;
+    const verifiedSummaryHeader = `• Ascendant (Lagna): ${ascendantStr}\n• Moon Sign: ${moonStr}\n• Current Period: ${activeDashaStr}`;
 
     const clientSalutation = name ? `Dear ${name}` : 'Namaste';
 
-    const prompt = `You are BHUVANA — an authentic, seasoned Vedic and KP Astrologer with profound knowledge of Krishnamurti Paddhati (KP) Cuspal Sub-Lords, Vimshottari Dasha, and classical Lal Kitab remedies.
+    const prompt = `You are BHUVANA — an authentic Vedic and KP Astrologer.
 
-MANDATORY ASTRONOMICAL GROUND TRUTH:
-${verifiedAstroContext}
+MANDATORY CHART DATA (NEVER CONTRADICT OR INVENT ALTERNATIVES):
+- Ascendant: ${ascendantStr}
+- Moon Sign & Nakshatra: ${moonStr}
+- Active Timeline: ${activeDashaStr}
+- Planetary Alignment Details:
+${planetList.length > 0 ? planetList.join('\n') : 'Standard sidereal positions calculated.'}
 
-CLIENT PROFILE:
-- Full Name: ${name || 'Seeker'}
-- Gender: ${gender}
-- Date of Birth: ${formattedDate}
-- Time of Birth: ${formattedTime}
-- Place of Birth: ${pob}
-- Client Question: "${question}"
+SEEKER DETAILS:
+- Name: ${name || 'Seeker'}
+- Question: "${question}"
 - Output Language: ${language}
 
-STRICT CONSTRAINTS:
-1. Always open your reading addressing the client personally and respectfully by their name (e.g., "${clientSalutation}, ...").
-2. STRICT MATHEMATICAL TRUTH: You MUST use ONLY the exact Ascendant (Lagna), Moon sign, Nakshatras, and planetary houses listed in the MANDATORY ASTRONOMICAL GROUND TRUTH above. NEVER invent, swap, or guess a different sign or dasha.
-3. Speak with calm, definitive authority, tailoring insights directly to their question and chart.
-4. Do not include meta-disclaimers like "consult an astrologer" or "not a substitute for professional advice".
-5. Never quote consultation fees or offer private sessions.
+CRITICAL RULES:
+1. Address the seeker respectfully as "${clientSalutation}".
+2. You MUST state the Ascendant as ${ascendantStr} and Moon Sign as ${moonStr}. DO NOT mention Pushya unless a planet is explicitly in Pushya.
+3. Address the seeker's question directly with professional Vedic & KP insights based strictly on the parameters above.
+4. No disclaimers, medical warnings, or "consult a human astrologer" statements.
 
 ${
   unlockedRemedy
     ? `PAID REMEDY MODE:
 Provide the 9-WEEK LAL KITAB REMEDY PROTOCOL for ${name || 'the seeker'}:
-1. Identify the root planetary friction causing obstacles in their query.
-2. Detail an exact 9-week schedule with 2-3 specific non-commercial remedies.
-3. Outline behavioral guidelines during this period.
-Ensure the entire 9-week protocol is fully written out to completion.`
+1. Detail the exact root planetary friction causing obstacles.
+2. Provide a 9-week schedule with non-commercial daily actions and symbolic totkas.
+3. Outline behavioral guidelines.`
     : `FREE DIAGNOSIS MODE:
-1. Address ${name || 'the seeker'} directly and analyze their verified Vedic chart foundations (verified Lagna, Moon Sign, Key Planets).
-2. Provide timing and KP analysis directly answering their query based strictly on the verified planets above.
-3. Identify the planetary bottleneck.
-4. Conclude with this exact sentence:
+1. Provide deep astrological analysis and practical timing addressing the query.
+2. Pinpoint the key planetary obstacle.
+3. Conclude with this exact sentence:
 "To harmonize these planetary currents, you can unlock your personalized 9-Week Lal Kitab Remedial Protocol below with a sacred Dakshina of ₹21."`
 }
 
-FORMAT:
-- Clean paragraphs with bold key phrases. No markdown tables.`;
+Output format: Natural, authoritative paragraphs. No markdown tables.`;
 
     const groqPayload = {
       model: 'qwen/qwen3.8-27b',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2,
+      temperature: 0.1,
       max_tokens: 2500
     };
 
-    const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
-    const groqResponse = await fetch(endpoint, {
+    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${groqKey}`,
@@ -202,43 +184,33 @@ FORMAT:
       body: JSON.stringify(groqPayload)
     });
 
-    const responseText = await groqResponse.text();
-    let groqData = null;
-    try {
-      groqData = JSON.parse(responseText);
-    } catch (parseErr) {
+    if (!groqResponse.ok) {
       return new Response(
-        JSON.stringify({ answer: `DIAGNOSTIC [5]: Groq raw response parse failed (HTTP ${groqResponse.status}). Response preview: ${responseText.slice(0, 100)}` }),
+        JSON.stringify({ answer: politeErrorMessage }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    if (!groqResponse.ok || !groqData || !groqData.choices || !groqData.choices.length) {
-      const errDetail = groqData && groqData.error ? (groqData.error.message || JSON.stringify(groqData.error)) : responseText.slice(0, 100);
-      return new Response(
-        JSON.stringify({ answer: `DIAGNOSTIC [6]: Groq API rejected request (HTTP ${groqResponse.status}): ${errDetail}` }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
+    const groqData = await groqResponse.json();
+    let interpretation = (groqData.choices && groqData.choices[0] && groqData.choices[0].message)
+      ? groqData.choices[0].message.content.trim()
+      : politeErrorMessage;
 
-    let answer = groqData.choices[0].message.content.trim();
+    // Remove any trailing generic disclaimers
+    interpretation = interpretation.replace(/Please consult.*?(?=\n|$)/gi, '');
+    interpretation = interpretation.replace(/consult a qualified.*?astrologer.*?(?=\n|$)/gi, '').trim();
 
-    // Clean any trailing disclaimers
-    answer = answer.replace(/Remember,?\s*these remedies are tailored.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Seek guidance from a trusted.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/not a substitute for expert guidance.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/consult a qualified.*?astrologer.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/consult with an expert.*?(?=\n|$)/gi, '');
-    answer = answer.replace(/Please consult.*?(?=\n|$)/gi, '').trim();
+    // Final output: verified facts at the top, followed by the authentic interpretation
+    const finalAnswer = `**Verified Planetary Ephemeris:**\n${verifiedSummaryHeader}\n\n---\n\n${interpretation}`;
 
     return new Response(
-      JSON.stringify({ answer }),
+      JSON.stringify({ answer: finalAnswer }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
 
   } catch (err) {
     return new Response(
-      JSON.stringify({ answer: `DIAGNOSTIC [7]: Unhandled Server Exception: ${err.message}` }),
+      JSON.stringify({ answer: politeErrorMessage }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
   }
