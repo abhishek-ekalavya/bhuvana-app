@@ -82,6 +82,14 @@ export async function onRequest(context) {
       }
     }
 
+    // Helper to safely extract names from API responses whether string or object
+    const extractName = (val) => {
+      if (!val) return '';
+      if (typeof val === 'string') return val;
+      if (typeof val === 'object') return val.name || val.planet || val.lord || val.dasha || '';
+      return String(val);
+    };
+
     // 1. Fetch Planetary Details from Vedic Astro API
     const astroUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?api_key=${vedicKey}&dob=${formattedDate}&tob=${formattedTime}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`;
     const astroRes = await fetch(astroUrl).catch(() => null);
@@ -97,10 +105,10 @@ export async function onRequest(context) {
         for (const key of Object.keys(raw)) {
           const item = raw[key];
           if (item && item.name) {
-            const planetName = item.name;
-            const sign = item.sign || item.rashi || 'Unknown Sign';
+            const planetName = extractName(item.name);
+            const sign = extractName(item.sign || item.rashi) || 'Unknown Sign';
             const house = item.house || '?';
-            const nakshatra = item.nakshatra || 'Unknown';
+            const nakshatra = extractName(item.nakshatra) || 'Unknown';
             planetList.push(`${planetName}: ${sign} (House ${house}, ${nakshatra} Nakshatra)`);
 
             if (planetName.toLowerCase() === 'ascendant' || planetName.toLowerCase() === 'lagna') {
@@ -114,7 +122,7 @@ export async function onRequest(context) {
       }
     }
 
-    // 2. Fetch Active Dasha
+    // 2. Fetch Active Dasha from Vedic Astro API
     let activeDashaStr = "Mars (Kuja) Mahadasha";
     const dashaUrl = `https://api.vedicastroapi.com/v3-json/dashas/current-mahadasha?api_key=${vedicKey}&dob=${formattedDate}&tob=${formattedTime}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`;
     const dashaRes = await fetch(dashaUrl).catch(() => null);
@@ -122,8 +130,10 @@ export async function onRequest(context) {
       const dashaJson = await dashaRes.json().catch(() => null);
       if (dashaJson && (dashaJson.response || dashaJson.status === 200)) {
         const dData = dashaJson.response || dashaJson;
-        if (dData.mahadasha || dData.major) {
-          activeDashaStr = `${dData.mahadasha || dData.major} Mahadasha (Antardasha: ${dData.antardasha || dData.sub || 'Active'})`;
+        const major = extractName(dData.mahadasha || dData.major);
+        const sub = extractName(dData.antardasha || dData.sub);
+        if (major) {
+          activeDashaStr = `${major} Mahadasha${sub ? ` (Antardasha: ${sub})` : ''}`;
         }
       }
     }
@@ -200,7 +210,7 @@ Output format: Natural, authoritative paragraphs. No markdown tables.`;
     interpretation = interpretation.replace(/Please consult.*?(?=\n|$)/gi, '');
     interpretation = interpretation.replace(/consult a qualified.*?astrologer.*?(?=\n|$)/gi, '').trim();
 
-    // Final output: verified facts at the top, followed by the authentic interpretation
+    // Final clean output: verified facts at the top, followed by the authentic interpretation
     const finalAnswer = `**Verified Planetary Ephemeris:**\n${verifiedSummaryHeader}\n\n---\n\n${interpretation}`;
 
     return new Response(
