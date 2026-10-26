@@ -11,9 +11,6 @@ export async function onRequest(context) {
     return new Response(null, { headers: corsHeaders, status: 200 });
   }
 
-  // Graceful client-facing fallback message for any upstream glitch
-  const politeErrorMessage = "Bhuvana is currently aligning planetary ephemeris data. Please refresh or try again in a few moments.";
-
   try {
     let body = {};
     try {
@@ -41,15 +38,21 @@ export async function onRequest(context) {
     const groqKey = env.GROQ_API_KEY;
     const vedicKey = env.VEDIC_ASTRO_KEY;
 
-    // Fail gracefully without ever revealing variable names or configs
-    if (!groqKey || !vedicKey) {
+    // Checkpoint 1: Cloudflare Secrets Check
+    if (!groqKey) {
       return new Response(
-        JSON.stringify({ answer: politeErrorMessage }),
+        JSON.stringify({ answer: "DIAGNOSTIC [1]: Cloudflare cannot find GROQ_API_KEY in this environment." }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+    if (!vedicKey) {
+      return new Response(
+        JSON.stringify({ answer: "DIAGNOSTIC [2]: Cloudflare cannot find VEDIC_ASTRO_KEY in this environment." }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    // Convert YYYY-MM-DD to DD/MM/YYYY
+    // Date formatting (YYYY-MM-DD -> DD/MM/YYYY)
     let day = '01', month = '01', year = '2000';
     if (dob.includes('-')) {
       const parts = dob.split('-');
@@ -59,18 +62,18 @@ export async function onRequest(context) {
     }
     const formattedDate = `${day}/${month}/${year}`;
 
+    // Time formatting (HH:MM)
     let formattedTime = tob;
     if (tob.includes(':')) {
       const tparts = tob.split(':');
       formattedTime = `${tparts[0].padStart(2, '0')}:${tparts[1].padStart(2, '0')}`;
     }
 
-    // Default coordinates (Dombivli / Mumbai region)
+    // Default coordinates: Dombivli / Thane
     let lat = 19.2183;
     let lon = 73.0867;
     const tz = 5.5;
 
-    // Geocoding
     const cleanPob = pob.toLowerCase();
     if (!cleanPob.includes('dombivli')) {
       const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pob)}&format=json&limit=1`;
@@ -84,11 +87,18 @@ export async function onRequest(context) {
       }
     }
 
-    // 1. Fetch Verified Planetary Details from Vedic Astro API
+    // Checkpoint 2: Call Vedic Astro API for Planet Positions
     const astroUrl = `https://api.vedicastroapi.com/v3-json/horoscope/planet-details?api_key=${vedicKey}&dob=${formattedDate}&tob=${formattedTime}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`;
-    const astroRes = await fetch(astroUrl).catch(() => null);
-    const astroJson = astroRes ? await astroRes.json().catch(() => null) : null;
+    const astroRes = await fetch(astroUrl).catch((err) => ({ ok: false, statusText: err.message }));
+    
+    if (!astroRes.ok) {
+      return new Response(
+        JSON.stringify({ answer: `DIAGNOSTIC [3]: Vedic Astro API request failed (HTTP ${astroRes.status || 'Network Error'}).` }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
 
+    const astroJson = await astroRes.json().catch(() => null);
     const planetSummary = [];
     let lagnaInfo = "";
 
@@ -108,7 +118,14 @@ export async function onRequest(context) {
       }
     }
 
-    // 2. Fetch Active Dasha from Vedic Astro API
+    if (planetSummary.length === 0) {
+      return new Response(
+        JSON.stringify({ answer: `DIAGNOSTIC [4]: Vedic API responded, but returned no planets. Raw status: ${astroJson ? astroJson.status : 'Empty'}` }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    // Checkpoint 3: Call Vedic Astro API for Mahadasha
     let activeDashaInfo = "";
     const dashaUrl = `https://api.vedicastroapi.com/v3-json/dashas/current-mahadasha?api_key=${vedicKey}&dob=${formattedDate}&tob=${formattedTime}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`;
     const dashaRes = await fetch(dashaUrl).catch(() => null);
@@ -120,14 +137,6 @@ export async function onRequest(context) {
           activeDashaInfo = `Active Mahadasha: ${dData.mahadasha || dData.major} (Antardasha: ${dData.antardasha || dData.sub || 'Active'})`;
         }
       }
-    }
-
-    // If ephemeris data could not be computed, fail politely
-    if (planetSummary.length === 0) {
-      return new Response(
-        JSON.stringify({ answer: politeErrorMessage }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
     }
 
     const verifiedAstroContext = `VERIFIED MATHEMATICAL EPHEMERIS (GROUND TRUTH):
@@ -199,21 +208,22 @@ FORMAT:
       groqData = JSON.parse(responseText);
     } catch (parseErr) {
       return new Response(
-        JSON.stringify({ answer: politeErrorMessage }),
+        JSON.stringify({ answer: `DIAGNOSTIC [5]: Groq raw response parse failed (HTTP ${groqResponse.status}). Response preview: ${responseText.slice(0, 100)}` }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
     if (!groqResponse.ok || !groqData || !groqData.choices || !groqData.choices.length) {
+      const errDetail = groqData && groqData.error ? (groqData.error.message || JSON.stringify(groqData.error)) : responseText.slice(0, 100);
       return new Response(
-        JSON.stringify({ answer: politeErrorMessage }),
+        JSON.stringify({ answer: `DIAGNOSTIC [6]: Groq API rejected request (HTTP ${groqResponse.status}): ${errDetail}` }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
     let answer = groqData.choices[0].message.content.trim();
 
-    // Clean any lingering disclaimers
+    // Clean any trailing disclaimers
     answer = answer.replace(/Remember,?\s*these remedies are tailored.*?(?=\n|$)/gi, '');
     answer = answer.replace(/Seek guidance from a trusted.*?(?=\n|$)/gi, '');
     answer = answer.replace(/not a substitute for expert guidance.*?(?=\n|$)/gi, '');
@@ -228,7 +238,7 @@ FORMAT:
 
   } catch (err) {
     return new Response(
-      JSON.stringify({ answer: politeErrorMessage }),
+      JSON.stringify({ answer: `DIAGNOSTIC [7]: Unhandled Server Exception: ${err.message}` }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
   }
